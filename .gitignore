@@ -1,0 +1,11 @@
+# 临时脚本
+_*.js
+# 系统文件
+.DS_Store
+Thumbs.db
+# 编辑器
+.vscode/
+.idea/
+*.swp
+# 依赖
+node_modules/

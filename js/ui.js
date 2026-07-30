@@ -1,0 +1,554 @@
+/* UI 通用组件 */
+const UI = {
+  showToast(message, duration = 2000) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), duration);
+  },
+
+  showDetail(html, title = '详情') {
+    const body = document.getElementById('detailBody');
+    body.innerHTML = `<h3 style="margin-bottom:16px;font-size:18px;">${title}</h3>${html}`;
+    document.getElementById('detailModal').classList.remove('hidden');
+  },
+
+  closeDetail() {
+    document.getElementById('detailModal').classList.add('hidden');
+  },
+
+  navigate(page, params = {}) {
+    State.currentPage = page;
+    const titles = {
+      home: '首页', chinese: '语文', math: '数学', english: '英语',
+      papers: '真题试卷', textbook: '电子课本', checkin: '打卡日历',
+      pomodoro: '番茄钟', wrongbook: '错题本', stats: '数据统计',
+      materials: '素材库', achievements: '打卡成就', widget: '图片小组件',
+      settings: '设置'
+    };
+    document.getElementById('topTitle').textContent = titles[page] || page;
+    
+    // Update nav active state
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.page === page);
+    });
+    document.querySelectorAll('.bottom-nav-item').forEach(item => {
+      const ip = item.dataset.page;
+      if (page === 'chinese' || page === 'math' || page === 'english') {
+        item.classList.toggle('active', ip === page);
+      } else if (page === 'home') {
+        item.classList.toggle('active', ip === 'home');
+      } else if (page === 'tools' || ['checkin','pomodoro','wrongbook','stats','materials'].includes(page)) {
+        item.classList.toggle('active', ip === 'tools');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+
+    this.renderPage(page, params);
+    window.scrollTo(0, 0);
+
+    // Close mobile sidebar
+    document.getElementById('sidebar').classList.remove('mobile-open');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (overlay) overlay.classList.remove('show');
+  },
+
+  renderPage(page, params) {
+    const container = document.getElementById('pageContainer');
+    container.classList.remove('page-enter');
+    void container.offsetWidth;
+    container.classList.add('page-enter');
+
+    const pages = {
+      home: () => this.renderHome(),
+      chinese: () => Subjects.renderSubject('chinese'),
+      math: () => Subjects.renderSubject('math'),
+      english: () => Subjects.renderSubject('english'),
+      papers: () => Papers.render(),
+      textbook: () => Textbooks.render(),
+      checkin: () => Tools.renderCheckin(),
+      pomodoro: () => Tools.renderPomodoro(),
+      wrongbook: () => Tools.renderWrongBook(),
+      stats: () => Tools.renderStats(),
+      materials: () => Tools.renderMaterials(),
+      achievements: () => this.renderAchievements(),
+      widget: () => Widget.render(),
+      settings: () => this.renderSettings(),
+      tools: () => Tools.renderToolsPage()
+    };
+
+    const renderer = pages[page] || pages.home;
+    container.innerHTML = '';
+    container.appendChild(this.createElement(renderer()));
+    // 渲染后绑定页面级事件
+    this.bindPageEvents(page);
+  },
+
+  // 绑定各页面渲染后的事件
+  bindPageEvents(page) {
+    if (page === 'home') this.bindHomeEvents();
+    if (page === 'settings') this.bindSettingsEvents();
+  },
+
+  // 首页：实时时钟 + 快速计时器 + 打卡 + 导航
+  bindHomeEvents() {
+    const container = document.getElementById('pageContainer');
+
+    // 实时时钟
+    const clockEl = document.getElementById('homeClock');
+    const tickClock = () => {
+      if (!clockEl || !document.body.contains(clockEl)) return;
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      clockEl.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+    tickClock();
+    if (this._clockTimer) clearInterval(this._clockTimer);
+    this._clockTimer = setInterval(tickClock, 1000);
+
+    // 快速计时器
+    let timerSec = 0;
+    const timerEl = document.getElementById('homeTimer');
+    const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    const startBtn = document.getElementById('homeTimerStart');
+    const stopBtn = document.getElementById('homeTimerStop');
+    const resetBtn = document.getElementById('homeTimerReset');
+    if (startBtn) startBtn.addEventListener('click', () => {
+      if (this._timerInterval) return;
+      this._timerInterval = setInterval(() => {
+        timerSec++;
+        if (timerEl) timerEl.textContent = fmt(timerSec);
+      }, 1000);
+    });
+    if (stopBtn) stopBtn.addEventListener('click', () => {
+      if (this._timerInterval) { clearInterval(this._timerInterval); this._timerInterval = null; }
+    });
+    if (resetBtn) resetBtn.addEventListener('click', () => {
+      if (this._timerInterval) { clearInterval(this._timerInterval); this._timerInterval = null; }
+      // 计入学习时长（按分钟）
+      if (timerSec > 0) State.addStudyTime(Math.max(1, Math.round(timerSec / 60)));
+      timerSec = 0;
+      if (timerEl) timerEl.textContent = '00:00';
+    });
+
+    // 快捷动作 / 卡片导航
+    container.querySelectorAll('[data-action]').forEach(el => {
+      el.addEventListener('click', () => this.navigate(el.dataset.action));
+    });
+    container.querySelectorAll('[data-nav]').forEach(el => {
+      el.addEventListener('click', () => this.navigate(el.dataset.nav));
+    });
+
+    // 首页打卡按钮
+    const checkinBtn = document.getElementById('homeCheckinBtn');
+    if (checkinBtn) checkinBtn.addEventListener('click', () => {
+      const today = State.getTodayKey();
+      const checkins = State.getCheckins();
+      if (checkins[today]) {
+        this.navigate('checkin');
+      } else {
+        State.setCheckin(today, { note: '首页快速打卡' });
+        Motivation.showCelebration('打卡成功！今天也很棒！', '📅');
+        this.navigate('home');
+      }
+    });
+  },
+
+  // 设置页：主题切换 + 名字 + 数据管理
+  bindSettingsEvents() {
+    const container = document.getElementById('pageContainer');
+
+    // 主题切换
+    container.querySelectorAll('.theme-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const val = opt.dataset.themeVal;
+        State.setTheme(val);
+        // 刷新active态
+        container.querySelectorAll('.theme-option').forEach(o => o.classList.toggle('active', o === opt));
+        this.showToast('主题已切换');
+      });
+    });
+
+    // 名字输入
+    const nameInput = document.getElementById('userNameInput');
+    if (nameInput) nameInput.addEventListener('change', () => {
+      State.setUserName(nameInput.value.trim());
+      this.showToast('名字已保存');
+    });
+
+    // 顶部主题快捷切换按钮
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle && !themeToggle.dataset.bound) {
+      themeToggle.dataset.bound = '1';
+      themeToggle.addEventListener('click', () => State.toggleTheme());
+    }
+
+    // 数据管理
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) exportBtn.addEventListener('click', () => {
+      const data = Storage.export();
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `学习数据备份_${State.getTodayKey()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.showToast('备份已导出');
+    });
+    const importBtn = document.getElementById('importBtn');
+    if (importBtn) importBtn.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = '.json,application/json';
+      input.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          if (Storage.import(ev.target.result)) {
+            this.showToast('导入成功');
+            State.init();
+            this.navigate('home');
+          } else {
+            this.showToast('导入失败，文件格式错误');
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    });
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+      if (confirm('确定清空所有学习数据吗？此操作不可恢复！')) {
+        Storage.clear();
+        this.showToast('数据已清空');
+        this.navigate('home');
+      }
+    });
+  },
+
+  // 今日答对题数
+  getTodayCorrect() {
+    const records = State.getRecords();
+    const today = State.getTodayKey();
+    return records.filter(r => r.date === today && r.type === 'question_answer' && r.correct).length;
+  },
+
+  createElement(html) {
+    if (typeof html === 'string') {
+      const div = document.createElement('div');
+      div.innerHTML = html.trim();
+      // 若模板含多个顶层节点，需全部插入，否则 firstChild 会丢失后续兄弟节点
+      if (div.childNodes.length === 1) {
+        return div.firstChild;
+      }
+      const frag = document.createDocumentFragment();
+      while (div.firstChild) frag.appendChild(div.firstChild);
+      return frag;
+    }
+    return html;
+  },
+
+  renderHome() {
+    const streak = Motivation.getCurrentStreak();
+    const today = new Date();
+    const dateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
+    const weekday = ['日', '一', '二', '三', '四', '五', '六'][today.getDay()];
+    const userName = State.getUserName();
+    const todayChecked = !!State.getCheckins()[State.getTodayKey()];
+    const todayCount = this.getTodayCount();
+    const todayCorrect = this.getTodayCorrect();
+    const accuracy = todayCount > 0 ? Math.round(todayCorrect / todayCount * 100) : 0;
+
+    return `
+      <div class="page-header">
+        <div>
+          <div class="page-title">🏠 ${userName}，你好呀！👋</div>
+          <div class="page-subtitle">${dateStr} 星期${weekday} · 已连续打卡 ${streak} 天</div>
+        </div>
+      </div>
+
+      <!-- 实时时钟模块 -->
+      <div class="glass-card" style="padding:20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div style="text-align:center;flex:1;min-width:140px;">
+          <div id="homeClock" style="font-size:38px;font-weight:700;color:var(--accent-dark);letter-spacing:2px;font-variant-numeric:tabular-nums;">--:--:--</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${dateStr} 星期${weekday}</div>
+        </div>
+        <div style="height:50px;width:1px;background:var(--border-soft);"></div>
+        <!-- 快速计时器 -->
+        <div style="text-align:center;flex:1;min-width:160px;">
+          <div id="homeTimer" style="font-size:26px;font-weight:600;color:var(--text-primary);font-variant-numeric:tabular-nums;">00:00</div>
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:6px;">
+            <button class="btn-secondary" id="homeTimerStart" style="padding:6px 14px;font-size:12px;">▶ 开始</button>
+            <button class="btn-secondary" id="homeTimerStop" style="padding:6px 14px;font-size:12px;">⏸ 暂停</button>
+            <button class="btn-secondary" id="homeTimerReset" style="padding:6px 10px;font-size:12px;">↺</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-banner">
+        <div class="banner-title">✨ 每日鼓励</div>
+        <div class="banner-quote">${Motivation.getRandomQuote()}</div>
+      </div>
+
+      <div class="quick-actions">
+        <div class="quick-action" data-action="chinese">
+          <div class="quick-action-icon">📖</div>
+          <div class="quick-action-label">语文学习</div>
+        </div>
+        <div class="quick-action" data-action="math">
+          <div class="quick-action-icon">🔢</div>
+          <div class="quick-action-label">数学练习</div>
+        </div>
+        <div class="quick-action" data-action="english">
+          <div class="quick-action-icon">🔤</div>
+          <div class="quick-action-label">英语背诵</div>
+        </div>
+        <div class="quick-action" data-action="papers">
+          <div class="quick-action-icon">📝</div>
+          <div class="quick-action-label">模拟试卷</div>
+        </div>
+        <div class="quick-action" data-action="pomodoro">
+          <div class="quick-action-icon">🍅</div>
+          <div class="quick-action-label">番茄专注</div>
+        </div>
+        <div class="quick-action" data-action="checkin">
+          <div class="quick-action-icon">📅</div>
+          <div class="quick-action-label">今日打卡</div>
+        </div>
+      </div>
+
+      <!-- 今日完成情况模块 -->
+      <div class="home-section">
+        <div class="home-section-title">📊 今日完成情况</div>
+        <div class="stats-overview">
+          <div class="stats-card" data-nav="chinese">
+            <div class="stats-icon">📚</div>
+            <div class="stats-value">${todayCount}</div>
+            <div class="stats-label">今日做题</div>
+          </div>
+          <div class="stats-card" data-nav="wrongbook">
+            <div class="stats-icon">✅</div>
+            <div class="stats-value">${todayCorrect}</div>
+            <div class="stats-label">答对题数</div>
+          </div>
+          <div class="stats-card" data-nav="stats">
+            <div class="stats-icon">🎯</div>
+            <div class="stats-value">${accuracy}%</div>
+            <div class="stats-label">正确率</div>
+          </div>
+          <div class="stats-card" data-nav="pomodoro">
+            <div class="stats-icon">⏰</div>
+            <div class="stats-value">${this.getTodayMinutes()}</div>
+            <div class="stats-label">学习(分钟)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 今日打卡情况模块 -->
+      <div class="home-section">
+        <div class="home-section-title">📅 今日打卡</div>
+        <div class="glass-card" style="padding:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-size:32px;">${todayChecked ? '✅' : '⏳'}</div>
+            <div>
+              <div style="font-size:15px;font-weight:600;color:var(--text-primary);">${todayChecked ? '今日已打卡' : '今日还未打卡'}</div>
+              <div style="font-size:12px;color:var(--text-muted);">连续 ${streak} 天 · 累计 ${Object.keys(State.getCheckins()).length} 天</div>
+            </div>
+          </div>
+          <button class="${todayChecked ? 'btn-secondary' : 'btn-primary'}" id="homeCheckinBtn" style="padding:10px 22px;">${todayChecked ? '查看记录' : '立即打卡'}</button>
+        </div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">🔥 连续打卡与错题</div>
+        <div class="stats-overview">
+          <div class="stats-card" data-nav="checkin">
+            <div class="stats-icon">🔥</div>
+            <div class="stats-value">${streak}</div>
+            <div class="stats-label">连续打卡(天)</div>
+          </div>
+          <div class="stats-card" data-nav="wrongbook">
+            <div class="stats-icon">❌</div>
+            <div class="stats-value">${State.getWrongBook().length}</div>
+            <div class="stats-label">待复习错题</div>
+          </div>
+          <div class="stats-card" data-nav="achievements">
+            <div class="stats-icon">🏆</div>
+            <div class="stats-value">${Object.keys(State.getAchievements()).length}</div>
+            <div class="stats-label">已解锁成就</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">🎯 推荐练习</div>
+        <div class="card-grid">
+          <div class="card card-accent clickable" data-nav="chinese">
+            <div class="card-title">📖 语文每日一练</div>
+            <div class="card-desc">古诗词鉴赏、阅读理解、词句练习，全面提升语文素养。</div>
+          </div>
+          <div class="card card-accent card-accent-mint clickable" data-nav="math">
+            <div class="card-title">🔢 数学专项训练</div>
+            <div class="card-desc">计算题、应用题、思维拓展，打好数学基础。</div>
+          </div>
+          <div class="card card-accent card-accent-blue clickable" data-nav="english">
+            <div class="card-title">🔤 英语单词默写</div>
+            <div class="card-desc">核心词汇、句型练习，英语进步看得见。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-title">🌟 继续激励</div>
+        <div class="card-grid">
+          <div class="card card-accent card-accent-yellow clickable" data-nav="widget">
+            <div class="card-title">🎀 我的图片收藏</div>
+            <div class="card-desc">查看我的图片轮播收藏，学习间隙放松一下！</div>
+          </div>
+          <div class="card clickable" data-nav="achievements">
+            <div class="card-title">🏆 成就墙</div>
+            <div class="card-desc">解锁更多成就徽章，见证你的每一步成长。</div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  getTodayCount() {
+    const records = State.getRecords();
+    const today = State.getTodayKey();
+    return records.filter(r => r.date === today).length;
+  },
+
+  getTodayMinutes() {
+    const st = State.getStudyTime();
+    const today = State.getTodayKey();
+    return st.sessions.filter(s => s.date === today).reduce((sum, s) => sum + s.minutes, 0);
+  },
+
+  renderAchievements() {
+    const unlocked = State.getAchievements();
+    return `
+      <div class="page-header">
+        <div>
+          <div class="page-title">🏆 打卡成就</div>
+          <div class="page-subtitle">完成挑战，解锁专属徽章</div>
+        </div>
+      </div>
+      <div class="achievements-grid">
+        ${APP_DATA.achievements.map(a => `
+          <div class="achievement-card ${unlocked[a.id] ? 'unlocked' : ''}">
+            <div class="achievement-icon">${a.icon}</div>
+            <div class="achievement-name">${a.name}</div>
+            <div class="achievement-desc">${a.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  },
+
+  renderSettings() {
+    const settings = Storage.get(Storage.KEYS.SETTINGS, { theme: 'pink' });
+    return `
+      <div class="page-header">
+        <div>
+          <div class="page-title">⚙️ 设置</div>
+          <div class="page-subtitle">个性化你的学习体验</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">👤 个性化</div>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">你的名字</div>
+            <div class="settings-desc">设置后在首页和导航栏显示</div>
+          </div>
+          <input type="text" id="userNameInput" class="name-input" value="${State.getUserName()}" placeholder="输入名字" maxlength="10" style="width:100px;padding:8px 12px;border:1px solid var(--border-soft);border-radius:10px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;text-align:center;outline:none;">
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">🎨 主题颜色</div>
+        <div class="settings-desc" style="padding:0 4px 12px;font-size:13px;color:var(--text-muted);">选择你喜欢的主题色系</div>
+        <div class="theme-picker">
+          <div class="theme-option ${State.theme === 'pink' ? 'active' : ''}" data-theme-val="pink">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#ffb6c1,#ffd6e0);"></div>
+            <span>粉色</span>
+          </div>
+          <div class="theme-option ${State.theme === 'white' ? 'active' : ''}" data-theme-val="white">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#fafafa,#e8eaff);border:1px solid #ddd;"></div>
+            <span>白色</span>
+          </div>
+          <div class="theme-option ${State.theme === 'green' ? 'active' : ''}" data-theme-val="green">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#a5d6a7,#c8e6c9);"></div>
+            <span>绿色</span>
+          </div>
+          <div class="theme-option ${State.theme === 'purple' ? 'active' : ''}" data-theme-val="purple">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#ce93d8,#e1bee7);"></div>
+            <span>紫色</span>
+          </div>
+          <div class="theme-option ${State.theme === 'dark' ? 'active' : ''}" data-theme-val="dark">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#1a1a24,#3a3350);"></div>
+            <span>黑色</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">💾 数据管理</div>
+        <div class="settings-item clickable" id="exportBtn">
+          <div>
+            <div class="settings-label">导出备份</div>
+            <div class="settings-desc">将所有学习数据导出为JSON文件</div>
+          </div>
+          <div>📤</div>
+        </div>
+        <div class="settings-item clickable" id="importBtn">
+          <div>
+            <div class="settings-label">导入数据</div>
+            <div class="settings-desc">从备份文件恢复学习数据</div>
+          </div>
+          <div>📥</div>
+        </div>
+        <div class="settings-item clickable" id="clearBtn" style="color:#e74c3c;">
+          <div>
+            <div class="settings-label">清空所有数据</div>
+            <div class="settings-desc">⚠️ 此操作不可恢复</div>
+          </div>
+          <div>🗑️</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">📱 桌面小组件</div>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">添加到桌面</div>
+            <div class="settings-desc">在浏览器菜单中选择"添加到主屏幕"</div>
+          </div>
+          <div>📲</div>
+        </div>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">离线使用</div>
+            <div class="settings-desc">所有学习内容均已缓存，支持断网学习</div>
+          </div>
+          <div>✅</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">ℹ️ 关于</div>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">${State.getUserName()}的学习工作台</div>
+            <div class="settings-desc">语文·数学·英语 · 四~六年级全覆盖</div>
+          </div>
+          <div>🌸</div>
+        </div>
+      </div>
+    `;
+  }
+};
