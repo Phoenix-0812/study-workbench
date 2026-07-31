@@ -408,6 +408,91 @@ const TEXTBOOKS_DATA = {
         content: "<h3>【番茄钟工作法】</h3>\n<p>由弗朗西斯科·西里洛创立，核心：专注25分钟=1个番茄，休息5分钟；4个番茄后大休息20-30分钟。</p>\n<h3>【小学生版番茄钟（适配注意力时长）】</h3>\n<ul>\n  <li><b>低年级 (1-3年级)：</b>15分钟写作业 + 3分钟休息</li>\n  <li><b>中年级 (4-5年级)：</b>20分钟 + 4分钟休息</li>\n  <li><b>6年级：</b>25分钟 + 5分钟休息</li>\n</ul>\n<h3>【关键规则】</h3>\n<ol>\n  <li>一个番茄内只能做<b>一件事</b>（写数学就只写数学），不喝水不吃东西不说话不碰手机。</li>\n  <li>番茄钟一旦开始就必须坚持到底。如果分心被打断，这个番茄作废重来。</li>\n  <li>每4个番茄钟后，来一次<b>大休息</b>（15-30分钟）。</li>\n  <li>每天完成的番茄钟数写在日历上，形成\"连续打卡链\"，能大幅提升成就感。</li>\n  <li>每天不要超过8-10个番茄钟（学习3-4小时），大脑也需要\"下班\"。</li>\n</ol>"
       }
     ]
+  },
+  "chinese_words": {
+    title: "📚 语文好词好句好段",
+    desc: "描写四季、读书、友谊等主题的好词好句，作文提分必备",
+    icon: "📚",
+    items: [
+      {
+        title: "描写春天的好词好句好段",
+        content: "<h3>【好词】</h3><p>春光明媚、春暖花开、桃红柳绿、草长莺飞、万物复苏、莺歌燕舞、万紫千红、百花齐放、鸟语花香、春意盎然、春风拂面、春雨绵绵、春雷滚滚、春寒料峭、春色满园。</p><h3>【好句】</h3><ol><li>春风又绿江南岸，明月何时照我还。——王安石《泊船瓜洲》</li><li>等闲识得东风面，万紫千红总是春。——朱熹《春日》</li><li>春天像刚落地的娃娃，从头到脚都是新的，它生长着。——朱自清《春》</li><li>春天是一幅多姿多彩的画卷，让人陶醉其中。</li><li>小草偷偷地从土里钻出来，嫩嫩的，绿绿的。</li></ol><h3>【好段】</h3><p>一场春雨过后，大地焕然一新。小草变绿了，花儿开放了，柳枝吐出了嫩芽。远处的群山像被水洗过一样，格外青翠。河面上，一群鸭子快乐地游来游去，不时地把头扎进水里捉鱼。岸边的桃花开得正艳，红的像火，粉的像霞，引来一群群蜜蜂嗡嗡地闹着，大大小小的蝴蝶飞来飞去。啊，春天真美！</p>"
+      },
+      {
+        title: "描写夏天的好词好句好段",
+        content: "<h3>【好词】</h3><p>烈日炎炎、骄阳似火、绿树成荫、挥汗如雨、汗流浃背、枝繁叶茂、电闪雷鸣、狂风暴雨、荷花盛开、蝉声阵阵、暑气逼人、铄石流金、五黄六月、夏日可畏。</p><h3>【好句】</h3><ol><li>接天莲叶无穷碧，映日荷花别样红。——杨万里《晓出净慈寺送林子方》</li><li>小荷才露尖尖角，早有蜻蜓立上头。——杨万里《小池》</li><li>夏日炎炎，蝉鸣阵阵，老槐树下成了我们最好的避暑胜地。</li><li>夏天是热情似火的季节，每一缕阳光都充满活力。</li><li>正午的太阳像个大火球，把大地烤得滚烫滚烫。</li></ol><h3>【好段】</h3><p>夏天的中午，热得让人喘不过气来。知了在树上拼命地叫着：\"热死啦！热死啦！\"老人们坐在树阴下，摇着蒲扇，一边喝茶一边聊天。小狗趴在地上，伸着长长的舌头，呼哧呼哧地喘气。孩子们可不怕热，他们一头扎进小河里，打水仗、摸小鱼，欢笑声把夏天的炎热都赶走了。</p>"
+      },
+      {
+        title: "描写秋天的好词好句好段",
+        content: "<h3>【好词】</h3><p>秋高气爽、天高云淡、金风送爽、丹桂飘香、硕果累累、落叶纷飞、五谷丰登、层林尽染、秋色宜人、秋风萧瑟、北雁南飞、满山红叶。</p><h3>【好句】</h3><ol><li>空山新雨后，天气晚来秋。——王维《山居秋暝》</li><li>落霞与孤鹜齐飞，秋水共长天一色。——王勃《滕王阁序》</li><li>秋风萧瑟，洪波涌起。——曹操《观沧海》</li><li>秋天是收获的季节，田野里一片金黄。</li><li>一片片落叶像一只只金色的蝴蝶，在空中打着旋儿飘落下来。</li></ol><h3>【好段】</h3><p>秋天的田野可真美啊！稻子熟了，像铺了一地的金子。一阵秋风吹过，稻穗轻轻地摇摆着，发出沙沙的笑声。农民伯伯开着收割机在田里忙碌着，他们的脸上都带着丰收的喜悦。果园里，红彤彤的苹果挂满枝头，黄澄澄的梨像一个个小灯笼，紫莹莹的葡萄一串一串地挂在架子上，在阳光下闪闪发光。</p>"
+      },
+      {
+        title: "描写冬天的好词好句好段",
+        content: "<h3>【好词】</h3><p>冰天雪地、寒风刺骨、天寒地冻、白雪皑皑、银装素裹、滴水成冰、鹅毛大雪、傲雪凌霜、数九寒冬、寒风凛冽、岁寒三友（松竹梅）。</p><h3>【好句】</h3><ol><li>忽如一夜春风来，千树万树梨花开。——岑参《白雪歌送武判官归京》</li><li>墙角数枝梅，凌寒独自开。——王安石《梅花》</li><li>千里冰封，万里雪飘。——毛泽东《沁园春·雪》</li><li>冬天是银装素裹的世界，到处都是白茫茫的一片。</li><li>雪花像柳絮、像鹅毛、像蒲公英的种子，飘飘悠悠地落下来。</li></ol><h3>【好段】</h3><p>下雪啦！雪花从彤云密布的天空中飘落下来，一开始还是零零星星的小雪花，像白色的砂糖粒儿；渐渐地，雪片变大了，变密了，像无数只白蝴蝶在空中翩翩起舞。不一会儿，地上白了，房子上白了，树上白了，整个世界都变成了白色的海洋。孩子们在雪地里堆雪人、打雪仗、滚雪球，欢乐的笑声震落了树上的雪。</p>"
+      },
+      {
+        title: "关于读书与学习的名言与好句",
+        content: "<h3>【名言警句】</h3><ol><li>书山有路勤为径，学海无涯苦作舟。——韩愈</li><li>读书破万卷，下笔如有神。——杜甫</li><li>书籍是人类进步的阶梯。——高尔基</li><li>读一本好书，就是和许多高尚的人谈话。——歌德</li><li>黑发不知勤学早，白首方悔读书迟。——颜真卿</li><li>少壮不努力，老大徒伤悲。——《长歌行》</li><li>学而不思则罔，思而不学则殆。——孔子</li><li>温故而知新，可以为师矣。——孔子</li><li>读万卷书，行万里路。——刘彝</li><li>书犹药也，善读之可以医愚。——刘向</li></ol><h3>【好句好段】</h3><p>书是一把钥匙，帮我打开知识的大门；书是一叶扁舟，载我在知识的海洋里遨游；书是一盏明灯，照亮我前进的道路。每当我捧起一本书，就像交到了一位知心朋友。</p><p>读书讲究\"三到\"：心到、眼到、口到。心不在此，则眼看不仔细，心眼既不专一，却只漫浪诵读，决不能记，记亦不能久也。</p>"
+      },
+      {
+        title: "关于友谊、亲情与美德的好句好段",
+        content: "<h3>【名言名句】</h3><ol><li>海内存知己，天涯若比邻。——王勃</li><li>桃花潭水深千尺，不及汪伦送我情。——李白</li><li>君子之交淡如水，小人之交甘若醴。——《庄子》</li><li>谁言寸草心，报得三春晖。——孟郊</li><li>慈母手中线，游子身上衣。临行密密缝，意恐迟迟归。——孟郊</li><li>老吾老以及人之老，幼吾幼以及人之幼。——孟子</li><li>己所不欲，勿施于人。——孔子</li><li>言必信，行必果。——孔子</li></ol><h3>【描写友谊好段】</h3><p>真正的友谊，是春天的细雨，滋润着彼此的心田；是夏日的清风，吹散了心头的烦恼；是秋日的硕果，分享着丰收的喜悦；是冬天的暖阳，温暖着寒冷的心灵。</p><h3>【描写亲情好段】</h3><p>母爱是世界上最伟大的爱。它是春天的甘霖，夏天的绿荫，秋天的硕果，冬天的暖阳。无论我们走多远，母亲的目光永远在身后注视着我们，给我们力量，给我们勇气。</p>"
+      }
+    ]
+  },
+  "math_knowledge": {
+    title: "📐 数学基础知识点速记",
+    desc: "四则运算、图形公式、分数百分数、方程、应用题解题法",
+    icon: "📐",
+    items: [
+      {
+        title: "基本数量关系（应用题必备）",
+        content: "<h3>【购物·价格问题】</h3><p>单价 × 数量 = 总价；总价 ÷ 单价 = 数量；总价 ÷ 数量 = 单价</p><h3>【行程问题】</h3><p>速度 × 时间 = 路程；路程 ÷ 速度 = 时间；路程 ÷ 时间 = 速度</p><p>• 相遇：相遇路程 = 速度和 × 相遇时间</p><p>• 追及：追及距离 = 速度差 × 追及时间</p><p>• 行船：顺水速度=船速+水速；逆水速度=船速-水速；船速=(顺+逆)/2；水速=(顺-逆)/2</p><h3>【工程问题】</h3><p>工作效率 × 工作时间 = 工作总量；工作总量 ÷ 工作效率 = 工作时间；工作总量 ÷ 工作时间 = 工作效率</p><p>常用\"设1法\"：把总工作量看作1。甲独做a天，乙独做b天，合作 ab/(a+b) 天完成。</p><h3>【产量问题】</h3><p>单产量 × 数量 = 总产量；工效 × 时间 = 工作总量</p><h3>【浓度问题】</h3><p>溶液 = 溶质 + 溶剂；浓度 = 溶质 ÷ 溶液 × 100%</p>"
+      },
+      {
+        title: "平面图形周长与面积公式汇总",
+        content: "<h3>【周长】</h3><ul><li>长方形：C = (长 + 宽) × 2 = (a+b)×2</li><li>正方形：C = 边长 × 4 = 4a</li><li>圆：C = 2πr = πd（π≈3.14，d=直径）</li></ul><h3>【面积】</h3><ul><li>长方形：S = 长 × 宽 = ab</li><li>正方形：S = a²</li><li>平行四边形：S = 底 × 高 = ah</li><li>三角形：S = 底 × 高 ÷ 2 = ah÷2（等底等高的三角形面积相等）</li><li>梯形：S = (上底+下底) × 高 ÷ 2 = (a+b)h÷2</li><li>圆：S = πr²</li><li>环形：S = π(R² - r²)（R外圆半径，r内圆半径）</li><li>半圆面积 = πr²÷2；半圆周长 = πr + 2r（注意不是圆周长的一半！）</li></ul><h3>【角度】</h3><ul><li>直角=90°；平角=180°；周角=360°</li><li>锐角＜90°；90°＜钝角＜180°</li><li>三角形内角和=180°；四边形内角和=360°；n边形内角和=(n-2)×180°</li><li>三角形任意两边之和大于第三边</li></ul>"
+      },
+      {
+        title: "立体图形：体积与表面积",
+        content: "<h3>【正方体】</h3><p>棱长总和 = 12a；表面积 = 6a²；体积 = a³</p><h3>【长方体】</h3><p>棱长总和 = 4(a+b+h)；表面积 = 2(ab+ah+bh)；体积 = abh = 底面积×高</p><h3>【圆柱】</h3><p>侧面积 = 底面周长 × 高 = 2πrh；表面积 = 2πr² + 2πrh；体积 = πr²h = 底面积×高</p><h3>【圆锥】</h3><p>体积 = ⅓πr²h = ⅓ × 底面积 × 高（等底等高的圆锥体积是圆柱的1/3）</p><h3>【重要结论】</h3><ul><li>正方体/长方体/圆柱通用体积：V = 底面积 × 高 = Sh</li><li>所有锥体：V = ⅓ × 底面积 × 高</li><li>排水法求不规则物体体积：V物 = V排开液体</li><li>切割、拼合：切一次增加2个面，拼一次减少2个面</li></ul>"
+      },
+      {
+        title: "分数、百分数与比的知识点",
+        content: "<h3>【分数四则运算】</h3><ul><li>分数乘法：分子×分子做分子，分母×分母做分母，先约分再乘。</li><li>分数除法：除以一个数（0除外）= 乘以它的倒数。</li><li>分数应用题：找准单位\"1\"；单位\"1\"已知用乘法，未知用除法或方程。</li></ul><h3>【百分数应用题】</h3><ul><li>分数化百分数：先化小数再×100%。</li><li>增长率 = (增长量 ÷ 原量) × 100%；利润率 = 利润÷成本×100%。</li><li>折扣：打几折 = 原价 × 十分之几；例如八折=原价×0.8。</li><li>利息 = 本金 × 利率 × 时间；本息 = 本金 + 利息。</li><li>浓度 = 溶质 ÷ 溶液 × 100%。</li></ul><h3>【比和比例】</h3><ul><li>比的基本性质：比的前后项同乘同除非零数，比值不变。</li><li>比例的基本性质：两内项之积 = 两外项之积（a:b=c:d → ad=bc）。</li><li>正比例：比值一定（y/x=k）；反比例：乘积一定（xy=k）。</li><li>比例尺 = 图上距离 ÷ 实际距离</li><li>按比分配：把总量按a:b分成a+b份，甲取总量×a/(a+b)，乙取总量×b/(a+b)。</li></ul>"
+      },
+      {
+        title: "简易方程与列式计算技巧",
+        content: "<h3>【用字母表示数·注意】</h3><ul><li>a×b 写作 a·b 或 ab；数字要写在字母前：a×3写作3a。</li><li>a×a写作a²，读作\"a的平方\"；a×a×a写作a³，读作\"a的立方\"。</li></ul><h3>【方程核心·等式性质】</h3><ol><li>等式两边同时加上或减去同一个数，左右仍然相等。</li><li>等式两边同时乘或除以同一个不为0的数，左右仍然相等。</li></ol><h3>【解方程步骤】</h3><ol><li>写\"解\"；</li><li>能算的先算（把常数项合并）；</li><li>移项：把含x的放左边，常数放右边（移项要变号！）；</li><li>合并同类项；</li><li>系数化1；</li><li>检验：把x的值代入原方程，看左右两边是否相等。</li></ol><h3>【应用题列方程技巧·四步法】</h3><ol><li>① 审题：找已知条件、求什么，划关键词；</li><li>② 设未知数：一般设问题为x（复杂题设较小量为x）；</li><li>③ 找等量关系：根据题意找一个不变量，用两种方式表示；</li><li>④ 列方程 → 解方程 → 检验 → 写答语。</li></ol>"
+      },
+      {
+        title: "单位换算大全（速查）",
+        content: "<h3>【长度】</h3><p>1km=1000m；1m=10dm=100cm=1000mm；1dm=10cm；1cm=10mm。</p><h3>【面积】</h3><p>1km²=100公顷；1公顷=10000m²；1m²=100dm²=10000cm²；1dm²=100cm²。</p><h3>【体积/容积】</h3><p>1m³=1000dm³；1dm³=1000cm³；1dm³=1升(L)；1cm³=1毫升(mL)；1L=1000mL。</p><h3>【重量/质量】</h3><p>1吨(t)=1000千克(kg)；1kg=1000克(g)；1千克=1公斤=2市斤。</p><h3>【人民币】</h3><p>1元=10角=100分；1角=10分。</p><h3>【时间】</h3><p>1日=24时；1时=60分=3600秒；1分=60秒；1世纪=100年；1年=12个月。</p><p>大月31天：1/3/5/7/8/10/12（7个）；小月30天：4/6/9/11（4个）；平年2月28天，闰年2月29天。</p><h3>【闰年判断方法】</h3><p>公历年份÷4，能整除一般是闰年；整百年份必须÷400整除才是闰年。例：1900÷400=4.75不是闰年；2000÷400=5是闰年；2024÷4=506是闰年；2100÷400=5.25不是闰年。</p>"
+      }
+    ]
+  },
+  "english_vocabulary": {
+    title: "🔠 英语单词与核心句型速记",
+    desc: "高频动词、介词用法、比较级规则、常用句型与时态",
+    icon: "🔠",
+    items: [
+      {
+        title: "小学英语高频动词（含过去式）",
+        content: "<h3>【第一组：be / have / do 三大助动词】</h3><ul><li>be：am/is - was；are - were；been（现在完成时）</li><li>have/has - had（有/吃/喝/助动词）</li><li>do/does - did（做/助动词）</li></ul><h3>【第二组：最常用实义动词（AAA型三不变）】</h3><ul><li>put - put - put 放下</li><li>cut - cut - cut 切、割</li><li>let - let - let 让</li><li>read - read - read 读（读音变化）</li><li>set - set - set 安置</li></ul><h3>【第三组：ABB型过去式过去分词相同】</h3><ul><li>buy - bought - bought 买</li><li>bring - brought - brought 带来</li><li>fight - fought - fought 打架</li><li>think - thought - thought 想</li><li>catch - caught - caught 抓住</li><li>teach - taught - taught 教</li><li>sleep - slept - slept 睡觉</li><li>keep - kept - kept 保持</li><li>leave - left - left 离开</li><li>lose - lost - lost 丢失</li><li>send - sent - sent 寄、送</li><li>spend - spent - spent 花费</li></ul><h3>【第四组：ABC型三不同·不规则变化】</h3><ul><li>go - went - gone 去</li><li>see - saw - seen 看见</li><li>eat - ate - eaten 吃</li><li>take - took - taken 拿/乘坐</li><li>do - did - done 做</li><li>write - wrote - written 写</li><li>drink - drank - drunk 喝</li><li>swim - swam - swum 游泳</li><li>sing - sang - sung 唱歌</li><li>begin - began - begun 开始</li><li>ring - rang - rung 铃响</li><li>speak - spoke - spoken 说话</li><li>break - broke - broken 打破</li><li>ride - rode - ridden 骑</li><li>drive - drove - driven 开车</li></ul>"
+      },
+      {
+        title: "时间介词 in / on / at 的用法",
+        content: "<h3>【in + 较长时间段】</h3><ul><li>in + 年份：in 2024, in 2008</li><li>in + 月份：in May, in September</li><li>in + 季节：in spring, in summer, in autumn/fall, in winter</li><li>in + 世纪年代：in the 21st century, in the 1990s</li><li>in + 上午/下午/晚上：in the morning/afternoon/evening</li></ul><h3>【on + 具体某一天/星期/节日】</h3><ul><li>on + 星期：on Monday, on Tuesday morning, on weekends</li><li>on + 日期：on May 1st, on October 1st, 2024</li><li>on + 节日当天：on Christmas Day, on Children's Day, on my birthday</li><li>on + 具体某天的早中晚：on a rainy morning, on the evening of May 1st</li></ul><h3>【at + 时刻/固定短时间点】</h3><ul><li>at + 几点钟：at 8:00, at half past seven, at noon, at midnight</li><li>固定搭配：at night, at home, at school, at work, at last, at first, at the age of..., at the end of...</li></ul><h3>【其它重要介词】</h3><ul><li>for + 一段时间：for three days, for a long time</li><li>since + 过去时间点：since 2020, since last year（常和完成时连用）</li><li>by + 时间点：\"在…之前，不迟于…\" by 5 o'clock</li><li>before/after：在…之前/之后</li><li>from...to...：从…到… from Monday to Friday</li></ul>"
+      },
+      {
+        title: "形容词/副词比较级与最高级",
+        content: "<h3>【规则变化口诀】</h3><ol><li>单音节词：直接 +er / +est： tall→taller→tallest；fast→faster→fastest</li><li>以e结尾：只加r/st：nice→nicer→nicest；fine→finer→finest</li><li>重读闭音节（辅元辅）：双写最后字母+er/est：big→bigger→biggest；hot→hotter→hottest；thin→thinner→thinnest；fat→fatter→fattest；sad→sadder→saddest；red→redder→reddest</li><li>辅音字母+y结尾：变y为i+er/est：happy→happier→happiest；busy→busier→busiest；easy→easier→easiest；angry→angrier→angriest</li><li>多音节词（3个或以上音节）：前加more/most：beautiful→more beautiful→most beautiful；interesting→more interesting→most important；delicious→more delicious→most delicious</li><li>特殊的双音节词：有的也加more/most（听着顺口就行）：careful→more careful→most careful；often→more often→most often</li></ol><h3>【不规则变化·必背】</h3><table style=\"width:100%;border-collapse:collapse;\"><tr style=\"background:var(--bg-soft);\"><th>原级</th><th>比较级</th><th>最高级</th><th>中文</th></tr><tr><td>good/well</td><td>better</td><td>best</td><td>好的</td></tr><tr><td>bad/ill</td><td>worse</td><td>worst</td><td>坏的</td></tr><tr><td>many/much</td><td>more</td><td>most</td><td>多的</td></tr><tr><td>little</td><td>less</td><td>least</td><td>少的</td></tr><tr><td>far</td><td>farther/further</td><td>farthest/furthest</td><td>远的</td></tr><tr><td>old</td><td>older/elder</td><td>oldest/eldest</td><td>老的</td></tr></table><h3>【比较级/最高级句型】</h3><ul><li>同级比较：A + be + as + 原级 + as + B（和…一样）。例：Tom is as tall as Jack.</li><li>不如…：A + be + not as/so + 原级 + as + B。例：He is not so tall as his brother.</li><li>比较级：A + be + 比较级 + than + B。例：She is taller than me.</li><li>最高级：A + be + the + 最高级 + of/in + 范围。例：He is the tallest in our class.</li><li>比较级and比较级：\"越来越…\"：better and better（越来越好）；more and more beautiful（越来越美）</li><li>The + 比较级…，the + 比较级…：\"越…，越…\" The more, the better. 越多越好。</li></ul>"
+      },
+      {
+        title: "常用英语情景句型100句（写作+口语）",
+        content: "<h3>【问候与介绍】</h3><ol><li>Hello! / Hi! 你好！</li><li>Good morning / afternoon / evening. 早上/下午/晚上好。</li><li>Good night. 晚安。</li><li>How are you? 你好吗？——Fine, thank you. / Very well, thanks. 很好，谢谢。</li><li>What's your name? 你叫什么名字？——My name is Tom. / I'm Tom. 我叫汤姆。</li><li>Nice to meet you! ——Nice to meet you, too. 很高兴认识你！——我也是。</li><li>How old are you? 你多大了？——I'm twelve (years old). 我12岁。</li><li>Where are you from? 你来自哪里？——I'm from China. 我来自中国。</li><li>Where do you come from? 同上。</li></ol><h3>【询问信息·疑问词】</h3><p>疑问词口诀：问人who、问物what、问地点where、问时间when/what time、问原因why、问方式how、问数量how many/much、问价钱how much、问哪个which、问谁的whose、问多久how long、问频率how often、问多远how far</p><ol start=\"10\"><li>What's this/that? ——It's a/an... 这/那是什么？是…</li><li>What are these/those? ——They're... 这些/那些是什么？是…</li><li>Who is he/she? ——He/She is my... 他/她是谁？</li><li>Where is...? ——It's on/in/under... …在哪？</li><li>When is your birthday? ——It's on May 1st.</li><li>Why are you late? ——Because I missed the bus. 你为什么迟到？</li><li>How do you go to school? ——By bike/By bus/On foot. 你怎么去上学？</li></ol><h3>【喜好·意愿】</h3><ol start=\"17\"><li>I like apples. 我喜欢苹果。She likes reading. 她喜欢阅读。（三单加s）</li><li>I don't like oranges. 我不喜欢橙子。He doesn't like math. 他不喜欢数学。（加doesn't后面还原）</li><li>What's your favourite...? ——My favourite colour is red. 你最喜欢的…是什么？</li><li>I would like some rice. 我想要一些米饭。= I want some rice.</li><li>What would you like to eat/drink? ——A hamburger and a glass of juice, please.</li></ol><h3>【情态动词 can/may/should】</h3><ol start=\"22\"><li>I can swim. 我会游泳。Can you speak English? 你会说英语吗？Yes, I can. / No, I can't.</li><li>May I come in? ——Come in, please. 我可以进来吗？</li><li>You should see a doctor. 你应该去看医生。</li></ol><p>提示：情态动词 can/may/must/should/will + 动词原形，没人称和数的变化！疑问句直接提前，否定句直接加not。</p>"
+      }
+    ]
   }
 }
 };

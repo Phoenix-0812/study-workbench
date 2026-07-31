@@ -619,79 +619,97 @@ const Tools = {
     return `<div class="pie-chart" style="background:conic-gradient(${gradientStops});"></div>`;
   },
 
-  /* ========== 素材库 ========== */
+  /* ========== 素材库（重定向到电子课本页的素材专题，统一三级导航） ========== */
   renderMaterials() {
-    const subjectTabs = [
-      { key: 'chinese', label: '📖 语文', name: '好词好句' },
-      { key: 'math', label: '🔢 数学', name: '公式汇总' },
-      { key: 'english', label: '🔤 英语', name: '单词表' }
+    // 素材库与电子课本页「素材专题」统一入口：点击后跳转到 Textbooks.openCollection
+    const collections = (APP_DATA.textbooks && APP_DATA.textbooks.collections) || {};
+    const allEntries = Object.entries(collections);
+    // 把专题按学科推荐分组展示
+    const groups = [
+      {
+        title: '📖 语文专区',
+        desc: '古诗词、作文素材、好词好句、名言警句',
+        keys: ['chinese_poems', 'chinese_essays', 'chinese_words', 'famous_quotes']
+      },
+      {
+        title: '🔢 数学专区',
+        desc: '公式定理、单位换算、应用题解法、知识点速记',
+        keys: ['math_formulas', 'math_knowledge']
+      },
+      {
+        title: '🔤 英语专区',
+        desc: '核心词汇、必背句型、语法速记、情景对话',
+        keys: ['english_core', 'english_vocabulary']
+      },
+      {
+        title: '🎯 通用学习方法',
+        desc: '艾宾浩斯复习、错题本、费曼法、番茄钟',
+        keys: ['learning_methods']
+      }
     ];
+
     let html = `
       <div class="page-header">
         <div>
           <div class="page-title">📋 素材库</div>
-          <div class="page-subtitle">随时查阅，高效学习</div>
+          <div class="page-subtitle">点击专题卡片进入查阅，支持刷新换序</div>
         </div>
+        <button class="reader-btn reader-btn-primary" id="matGoTextbook" title="打开电子课本查看完整专题">
+          📗 <span>查看电子课本</span>
+        </button>
       </div>
-      <div class="materials-tabs">
-        ${subjectTabs.map(t => `<div class="subject-tab ${t.key === 'chinese' ? 'active' : ''}" data-matsubject="${t.key}">${t.label} ${t.name}</div>`).join('')}
+    `;
+
+    groups.forEach(g => {
+      const cards = g.keys.map(k => {
+        const c = collections[k];
+        if (!c) return '';
+        return `
+          <div class="card card-accent clickable" data-colkey="${k}">
+            <div class="card-title">${c.icon || '📚'} ${c.title}</div>
+            <div class="card-desc">${c.desc} · 共 ${c.items.length} 篇 · 点击进入</div>
+          </div>
+        `;
+      }).join('');
+      html += `
+        <div class="home-section-title" style="margin-top:16px;">${g.title}</div>
+        <div style="font-size:13px;color:var(--text-muted);margin:4px 0 12px;padding:0 4px;">${g.desc}</div>
+        <div class="card-grid" style="margin-bottom:24px;">${cards || '<div style="padding:16px;color:var(--text-muted);">暂无内容</div>'}</div>
+      `;
+    });
+
+    // 再加一个「全部专题」板块，避免遗漏
+    html += `
+      <div class="home-section-title" style="margin-top:16px;">🌈 全部专题 · 共 ${allEntries.length} 个</div>
+      <div class="card-grid">
+        ${allEntries.map(([k, c]) => `
+          <div class="card clickable" data-colkey="${k}">
+            <div class="card-title">${c.icon || '📚'} ${c.title}</div>
+            <div class="card-desc">共 ${c.items.length} 篇 · 点击进入阅读</div>
+          </div>
+        `).join('')}
       </div>
-      <div id="materialsList"></div>
     `;
 
     const wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
 
     setTimeout(() => {
-      this.renderMaterialsList(wrap, 'chinese');
-      wrap.querySelectorAll('[data-matsubject]').forEach(tab => {
-        tab.addEventListener('click', () => {
-          wrap.querySelectorAll('[data-matsubject]').forEach(x => x.classList.remove('active'));
-          tab.classList.add('active');
-          this.renderMaterialsList(wrap, tab.dataset.matsubject);
+      // 点击专题卡片 → 跳转到 Textbooks.openCollection
+      wrap.querySelectorAll('[data-colkey]').forEach(card => {
+        card.addEventListener('click', () => {
+          const colKey = card.dataset.colkey;
+          UI.navigate('textbook');
+          // 等页面渲染完再打开专题
+          setTimeout(() => Textbooks.openCollection(colKey), 200);
         });
+      });
+      wrap.querySelectorAll('#matGoTextbook').forEach(btn => {
+        btn.addEventListener('click', () => UI.navigate('textbook'));
       });
     }, 0);
 
     return wrap;
-  },
-
-  renderMaterialsList(container, subject) {
-    const mat = APP_DATA.materials[subject];
-    const list = container.querySelector('#materialsList');
-    if (!mat) {
-      list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">暂无素材</div>';
-      return;
-    }
-
-    let html = '';
-    if (subject === 'chinese') {
-      html = `<div class="material-list">${mat.items.map(i => `
-        <div class="material-item">
-          <div class="material-item-title">${i.title}</div>
-          <div class="material-item-content">${i.content.replace(/\n/g, '<br>')}</div>
-        </div>
-      `).join('')}</div>`;
-    } else if (subject === 'math') {
-      html = `<div>${mat.items.map(i => `
-        <div class="formula-card">
-          <div class="formula-icon">📐</div>
-          <div class="formula-content">
-            <div class="formula-name">${i.title}</div>
-            <div class="formula-expression" style="white-space:pre-line;">${i.content}</div>
-          </div>
-        </div>
-      `).join('')}</div>`;
-    } else {
-      html = `<div class="word-list">${mat.items.map(i => `
-        <div class="word-card">
-          <div class="word-en">${i.title}</div>
-          <div class="word-cn" style="white-space:pre-line;font-size:12px;">${i.content}</div>
-        </div>
-      `).join('')}</div>`;
-    }
-
-    list.innerHTML = html;
   },
 
   /* ========== 工具页（移动端底部导航） ========== */
@@ -886,18 +904,20 @@ const Tools = {
       <div class="glass-card" style="padding:20px;">
         <div style="font-weight:600;margin-bottom:8px;">📝 输入题目</div>
         <textarea id="aiInput" rows="4" placeholder="请输入题目文字，例如：解方程 2x+3=7" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
-        <div style="margin-top:12px;">
-          <button class="btn-secondary" id="aiUploadBtn">📷 上传图片拍照</button>
-          <input type="file" id="aiFile" accept="image/*" style="display:none;">
-          <div id="aiPreview" style="margin-top:10px;"></div>
+        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
+          <button class="btn-secondary" id="aiCameraBtn" style="display:inline-flex;align-items:center;gap:6px;">📷 立即拍照</button>
+          <input type="file" id="aiCameraFile" accept="image/*" capture="environment" style="display:none;">
+          <button class="btn-secondary" id="aiGalleryBtn" style="display:inline-flex;align-items:center;gap:6px;">🖼️ 从相册选择</button>
+          <input type="file" id="aiGalleryFile" accept="image/*" style="display:none;">
         </div>
-        <div style="margin-top:12px;">
+        <div id="aiPreview" style="margin-top:12px;"></div>
+        <div style="margin-top:14px;">
           <span style="font-weight:600;">科目：</span>
           <label style="margin-right:12px;"><input type="radio" name="aiSubject" value="math" checked> 数学</label>
           <label style="margin-right:12px;"><input type="radio" name="aiSubject" value="chinese"> 语文</label>
           <label><input type="radio" name="aiSubject" value="english"> 英语</label>
         </div>
-        <button class="btn-primary" id="aiSearch" style="margin-top:14px;">🔍 AI搜题讲解</button>
+        <button class="btn-primary" id="aiSearch" style="margin-top:16px;">🔍 AI搜题讲解</button>
       </div>
       <div id="aiResult" style="margin-top:16px;"></div>
       <div class="glass-card" style="padding:16px;margin-top:16px;">
@@ -907,20 +927,33 @@ const Tools = {
     `;
     container.innerHTML = html;
     this._renderAisearchHistory(container, history);
+    // 统一的图片处理函数
+    const handleImageFile = (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const preview = container.querySelector('#aiPreview');
+        preview.innerHTML = `
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--bg-secondary);border-radius:12px;border:1px solid var(--border-soft);">
+            <img src="${ev.target.result}" style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--border-soft);object-fit:cover;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;margin-bottom:4px;">✅ 图片已上传</div>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">提示：由于是纯前端离线版本，图片无法联网OCR识别文字。请您在上方输入框中输入题目文字，即可获得AI智能讲解。</div>
+            </div>
+          </div>
+        `;
+        UI.showToast('📷 图片已上传');
+      };
+      reader.readAsDataURL(file);
+    };
     setTimeout(() => {
       container.querySelector('#aiBack').addEventListener('click', () => UI.navigate('tools'));
-      container.querySelector('#aiUploadBtn').addEventListener('click', () => container.querySelector('#aiFile').click());
-      container.querySelector('#aiFile').addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-          const preview = container.querySelector('#aiPreview');
-          preview.innerHTML = `<img src="${ev.target.result}" style="max-width:160px;max-height:160px;border-radius:10px;border:1px solid var(--border-soft);"><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">图片已上传，请在下方输入题目文字以获得讲解。</div>`;
-          UI.showToast('图片已上传');
-        };
-        reader.readAsDataURL(file);
-      });
+      // 拍照：capture="environment" 直接调用后置摄像头
+      container.querySelector('#aiCameraBtn').addEventListener('click', () => container.querySelector('#aiCameraFile').click());
+      container.querySelector('#aiCameraFile').addEventListener('change', e => handleImageFile(e.target.files[0]));
+      // 从相册选择
+      container.querySelector('#aiGalleryBtn').addEventListener('click', () => container.querySelector('#aiGalleryFile').click());
+      container.querySelector('#aiGalleryFile').addEventListener('change', e => handleImageFile(e.target.files[0]));
       container.querySelector('#aiSearch').addEventListener('click', () => {
         const text = container.querySelector('#aiInput').value.trim();
         const subject = container.querySelector('input[name="aiSubject"]:checked').value;

@@ -42,7 +42,9 @@ const Textbooks = {
           <div class="page-title">📗 电子课本 & 素材库</div>
           <div class="page-subtitle">人教版教材 + 学习素材专题 · 支持上下册翻阅 · 可点进查看</div>
         </div>
-        <button class="icon-btn" id="tbRefreshBtn" title="刷新推荐顺序" style="background:var(--primary-soft);color:var(--primary);padding:8px 14px;border-radius:12px;">🔄 刷新推荐</button>
+        <button class="reader-btn reader-btn-primary" id="tbRefreshBtn" title="刷新推荐顺序">
+          🔄 <span>刷新推荐</span>
+        </button>
       </div>
 
       <div class="subject-tabs">
@@ -180,9 +182,13 @@ const Textbooks = {
     const html = `
       <div class="reader-container">
         <div class="reader-nav">
-          <button class="icon-btn" id="backToLibrary">← 返回</button>
-          <div class="reader-title">${tbData.name} · ${grade.name}</div>
-          <div></div>
+          <div class="reader-nav-left">
+            <button class="reader-btn" id="backToLibrary">← <span>返回</span></button>
+          </div>
+          <div class="reader-nav-center">
+            <div class="reader-title">${tbData.name} · ${grade.name}</div>
+          </div>
+          <div class="reader-nav-right"></div>
         </div>
         <div style="padding:8px 0 4px;">
           <div class="home-section-title">📚 选择册别</div>
@@ -228,11 +234,15 @@ const Textbooks = {
       const html = `
         <div class="reader-container">
           <div class="reader-nav">
-            <button class="icon-btn" id="backToLibrary">← 返回</button>
-            <div class="reader-title">${volumeLabel} · ${unit.title}</div>
-            <div style="display:flex;gap:8px;">
-              <button class="icon-btn" id="prevUnit" ${unitIdx === 0 ? 'disabled' : ''}>◀</button>
-              <button class="icon-btn" id="nextUnit" ${unitIdx === volumeData.units.length - 1 ? 'disabled' : ''}>▶</button>
+            <div class="reader-nav-left">
+              <button class="reader-btn" id="backToLibrary">← <span>返回</span></button>
+            </div>
+            <div class="reader-nav-center">
+              <div class="reader-title">${volumeLabel} · ${unit.title}</div>
+            </div>
+            <div class="reader-nav-right">
+              <button class="reader-btn reader-btn-icon" id="prevUnit" title="上一单元" ${unitIdx === 0 ? 'disabled' : ''}>◀</button>
+              <button class="reader-btn reader-btn-icon" id="nextUnit" title="下一单元" ${unitIdx === volumeData.units.length - 1 ? 'disabled' : ''}>▶</button>
             </div>
           </div>
           <div class="reader-content">${unit.content}</div>
@@ -298,9 +308,15 @@ const Textbooks = {
     const html = `
       <div class="reader-container">
         <div class="reader-nav">
-          <button class="icon-btn" id="backToLibrary">← 返回素材库</button>
-          <div class="reader-title">${col.icon} ${col.title}</div>
-          <button class="icon-btn" id="colRefreshBtn" title="刷新顺序" style="background:var(--primary-soft);color:var(--primary);padding:6px 12px;border-radius:10px;">🔄 换序</button>
+          <div class="reader-nav-left">
+            <button class="reader-btn" id="backToLibrary">← <span>返回素材库</span></button>
+          </div>
+          <div class="reader-nav-center">
+            <div class="reader-title">${col.icon} ${col.title}</div>
+          </div>
+          <div class="reader-nav-right">
+            <button class="reader-btn reader-btn-primary" id="colRefreshBtn" title="刷新顺序">🔄 <span>换序</span></button>
+          </div>
         </div>
         <div style="padding:8px 0 12px;color:var(--text-muted);">${col.desc} · 共 ${col.items.length} 篇，点击卡片阅读</div>
         <div class="card-grid">
@@ -339,14 +355,18 @@ const Textbooks = {
       const html = `
         <div class="reader-container">
           <div class="reader-nav">
-            <button class="icon-btn" id="backToCol">← 返回专题</button>
-            <div class="reader-title">${col.icon} ${col.title} · 第${i+1}/${items.length}篇</div>
-            <div style="display:flex;gap:8px;">
-              <button class="icon-btn" id="prevArt" ${i===0?'disabled':''}>◀</button>
-              <button class="icon-btn" id="nextArt" ${i===items.length-1?'disabled':''}>▶</button>
+            <div class="reader-nav-left">
+              <button class="reader-btn" id="backToCol">← <span>返回专题</span></button>
+            </div>
+            <div class="reader-nav-center">
+              <div class="reader-title">${col.icon} ${col.title} · 第${i+1}/${items.length}篇</div>
+            </div>
+            <div class="reader-nav-right">
+              <button class="reader-btn reader-btn-icon" id="prevArt" title="上一篇" ${i===0?'disabled':''}>◀</button>
+              <button class="reader-btn reader-btn-icon" id="nextArt" title="下一篇" ${i===items.length-1?'disabled':''}>▶</button>
             </div>
           </div>
-          <h2 style="margin:16px 0 8px;padding:12px 16px;background:var(--primary-soft);border-radius:12px;color:var(--primary);">${it.title}</h2>
+          <h2 style="margin:16px 0 8px;padding:12px 16px;background:var(--accent-light);border-radius:12px;color:var(--accent-dark);">${it.title}</h2>
           <div class="reader-content">${it.content}</div>
         </div>
       `;

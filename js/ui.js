@@ -155,16 +155,137 @@ const UI = {
     });
   },
 
-  // 设置页：主题切换 + 名字 + 数据管理
+  // ========== 多端同步：同步码 ==========
+  // 简易压缩（UTF-8安全）：学习数据通常几KB，Base64即可
+  _encodeData(str) {
+    try {
+      // 用 encodeURIComponent + Base64 支持中文
+      return btoa(unescape(encodeURIComponent(str)));
+    } catch (e) { return ''; }
+  },
+  _decodeData(b64) {
+    try {
+      return decodeURIComponent(escape(atob(b64)));
+    } catch (e) { return ''; }
+  },
+  // 生成设备ID（只生成一次，永久保存）
+  _genDeviceId() {
+    const saved = Storage.get(Storage.KEYS.SETTINGS, {});
+    if (saved._deviceId) return saved._deviceId;
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let id = '';
+    for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
+    saved._deviceId = id;
+    Storage.set(Storage.KEYS.SETTINGS, saved);
+    return id;
+  },
+  // 生成6位同步校验码（和数据绑定，用于用户确认）
+  _genShortCode(dataStr) {
+    let h = 0;
+    for (let i = 0; i < dataStr.length; i++) h = ((h << 5) - h) + dataStr.charCodeAt(i), h |= 0;
+    const code = Math.abs(h) % 1000000;
+    return String(code).padStart(6, '0');
+  },
+
+  // 设置页：主题切换 + 名字 + 数据管理 + 多端同步
   bindSettingsEvents() {
     const container = document.getElementById('pageContainer');
+    const that = this;
+
+    // 1. 账号与多端同步 - 生成同步码
+    const genBtn = document.getElementById('genSyncCodeBtn');
+    if (genBtn) genBtn.addEventListener('click', async () => {
+      const rawData = Storage.export(); // JSON字符串
+      const encoded = that._encodeData(rawData);
+      const shortCode = that._genShortCode(encoded);
+
+      // 把完整数据写入剪贴板（6位码仅用于校验提示）
+      let copyOk = false;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(encoded);
+          copyOk = true;
+        }
+      } catch (e) {}
+
+      // 以弹窗形式展示6位码，并提示剪贴板状态
+      const clipMsg = copyOk ? '✅ 完整数据已自动复制到剪贴板' : '⚠️ 剪贴板不可用，请手动复制下面的完整数据';
+      UI.showDetail(`
+        <div style="text-align:center;">
+          <div style="font-size:14px;color:var(--text-muted);margin-bottom:10px;">🔑 6位同步校验码（在另一台设备输入时用到）</div>
+          <div style="font-size:40px;font-weight:800;letter-spacing:10px;padding:16px;background:var(--bg-secondary);border-radius:16px;margin-bottom:16px;font-family:monospace;color:var(--accent-dark);">${shortCode}</div>
+          <div style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:12px;">
+            ${clipMsg}<br>
+            💡 <strong>使用方法：</strong>在另一台设备打开「设置 → 输入同步码」，<br>
+            先粘贴剪贴板完整数据，再输入上方6位校验码确认。
+          </div>
+          <details style="text-align:left;margin-top:12px;">
+            <summary style="cursor:pointer;font-size:13px;color:var(--text-secondary);padding:8px;background:var(--bg-secondary);border-radius:10px;">📋 查看/手动复制完整数据</summary>
+            <textarea id="syncFullData" readonly style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--border-soft);font-size:11px;font-family:monospace;resize:vertical;height:140px;background:var(--bg-secondary);color:var(--text-primary);">${encoded}</textarea>
+          </details>
+          <div style="margin-top:16px;">
+            <button class="btn-primary" onclick="document.getElementById('detailClose')?.click?.();">我知道了</button>
+          </div>
+        </div>
+      `, '🔑 生成同步码');
+    });
+
+    // 2. 账号与多端同步 - 输入同步码
+    const inpBtn = document.getElementById('inputSyncCodeBtn');
+    if (inpBtn) inpBtn.addEventListener('click', () => {
+      UI.showDetail(`
+        <div>
+          <div style="font-weight:700;margin-bottom:14px;font-size:16px;">📥 导入学习数据</div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;">① 粘贴旧设备复制的完整数据：</div>
+            <textarea id="syncPasteData" placeholder="在此粘贴旧设备复制的长串数据..." style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border-soft);font-family:monospace;font-size:12px;resize:vertical;height:100px;background:var(--bg-secondary);color:var(--text-primary);outline:none;"></textarea>
+          </div>
+          <div style="margin-bottom:16px;">
+            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;">② 输入6位校验码（用于确认数据正确）：</div>
+            <input type="text" id="syncShortCode" maxlength="6" placeholder="6位数字" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border-soft);font-family:monospace;font-size:20px;letter-spacing:8px;text-align:center;background:var(--bg-secondary);color:var(--text-primary);outline:none;">
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button class="btn-secondary" id="syncCancel">取消</button>
+            <button class="btn-primary" id="syncOk">✅ 确认同步</button>
+          </div>
+        </div>
+      `, '🔓 输入同步码');
+      setTimeout(() => {
+        const cancelBtn = document.getElementById('syncCancel');
+        if (cancelBtn) cancelBtn.addEventListener('click', () => UI.closeDetail());
+        const okBtn = document.getElementById('syncOk');
+        if (okBtn) okBtn.addEventListener('click', async () => {
+          const pasteData = document.getElementById('syncPasteData').value.trim();
+          const shortCode = document.getElementById('syncShortCode').value.trim();
+          if (!pasteData) { UI.showToast('请先粘贴完整数据'); return; }
+          // 校验
+          const expectCode = that._genShortCode(pasteData);
+          if (shortCode && shortCode !== expectCode) {
+            if (!confirm(`⚠️ 6位校验码与数据不匹配。\n期望：${expectCode}\n您输入：${shortCode}\n\n是否仍要继续导入？`)) return;
+          }
+          // 解码并导入
+          const jsonStr = that._decodeData(pasteData);
+          if (!jsonStr) { UI.showToast('数据格式错误，请检查粘贴内容'); return; }
+          if (Storage.import(jsonStr)) {
+            UI.closeDetail();
+            // 保存新设备ID，避免覆盖
+            const s = Storage.get(Storage.KEYS.SETTINGS, {});
+            if (!s._deviceId) { s._deviceId = that._genDeviceId(); Storage.set(Storage.KEYS.SETTINGS, s); }
+            UI.showToast('🎉 同步成功！学习进度已恢复');
+            State.init();
+            that.navigate('home');
+          } else {
+            UI.showToast('导入失败，数据损坏');
+          }
+        });
+      }, 80);
+    });
 
     // 主题切换
     container.querySelectorAll('.theme-option').forEach(opt => {
       opt.addEventListener('click', () => {
         const val = opt.dataset.themeVal;
         State.setTheme(val);
-        // 刷新active态
         container.querySelectorAll('.theme-option').forEach(o => o.classList.toggle('active', o === opt));
         this.showToast('主题已切换');
       });
@@ -184,7 +305,7 @@ const UI = {
       themeToggle.addEventListener('click', () => State.toggleTheme());
     }
 
-    // 数据管理
+    // 数据管理 - 文件备份
     const exportBtn = document.getElementById('exportBtn');
     if (exportBtn) exportBtn.addEventListener('click', () => {
       const data = Storage.export();
@@ -219,7 +340,7 @@ const UI = {
     });
     const clearBtn = document.getElementById('clearBtn');
     if (clearBtn) clearBtn.addEventListener('click', () => {
-      if (confirm('确定清空所有学习数据吗？此操作不可恢复！')) {
+      if (confirm('确定清空所有学习数据吗？\n⚠️ 此操作不可恢复！建议先备份！')) {
         Storage.clear();
         this.showToast('数据已清空');
         this.navigate('home');
@@ -450,11 +571,48 @@ const UI = {
 
   renderSettings() {
     const settings = Storage.get(Storage.KEYS.SETTINGS, { theme: 'pink' });
+    const syncInfo = Storage.get(Storage.KEYS.SETTINGS, {});
+    const deviceId = syncInfo._deviceId || this._genDeviceId();
     return `
       <div class="page-header">
         <div>
           <div class="page-title">⚙️ 设置</div>
           <div class="page-subtitle">个性化你的学习体验</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">👤 账号与多端同步</div>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">🔐 当前设备ID</div>
+            <div class="settings-desc" id="deviceIdText" style="font-family:monospace;font-size:12px;word-break:break-all;">${deviceId}</div>
+          </div>
+          <div>📱</div>
+        </div>
+        <div class="settings-item clickable" id="genSyncCodeBtn">
+          <div>
+            <div class="settings-label">📤 生成同步码</div>
+            <div class="settings-desc">将当前学习数据生成6位同步码，在另一台设备输入即可同步</div>
+          </div>
+          <div>🔑</div>
+        </div>
+        <div class="settings-item clickable" id="inputSyncCodeBtn">
+          <div>
+            <div class="settings-label">📥 输入同步码</div>
+            <div class="settings-desc">输入另一台设备生成的6位同步码，恢复学习进度</div>
+          </div>
+          <div>🔓</div>
+        </div>
+        <div class="settings-item" style="padding-top:12px;">
+          <div style="flex:1;">
+            <div class="settings-label">💡 使用说明</div>
+            <div class="settings-desc" style="line-height:1.7;">
+              ① 在旧设备点「生成同步码」→ 复制6位码<br>
+              ② 在新设备点「输入同步码」→ 粘贴并确定<br>
+              ③ 学习进度（打卡/做题/错题/时长）立即同步
+            </div>
+          </div>
         </div>
       </div>
 
@@ -497,27 +655,27 @@ const UI = {
       </div>
 
       <div class="settings-section">
-        <div class="settings-title">💾 数据管理</div>
+        <div class="settings-title">💾 数据管理（文件备份）</div>
         <div class="settings-item clickable" id="exportBtn">
           <div>
-            <div class="settings-label">导出备份</div>
-            <div class="settings-desc">将所有学习数据导出为JSON文件</div>
+            <div class="settings-label">📤 导出备份文件</div>
+            <div class="settings-desc">导出为JSON文件，可长期保存或发微信/邮件</div>
           </div>
-          <div>📤</div>
+          <div>📄</div>
         </div>
         <div class="settings-item clickable" id="importBtn">
           <div>
-            <div class="settings-label">导入数据</div>
-            <div class="settings-desc">从备份文件恢复学习数据</div>
+            <div class="settings-label">📥 导入备份文件</div>
+            <div class="settings-desc">从JSON备份文件恢复学习数据</div>
           </div>
-          <div>📥</div>
+          <div>📂</div>
         </div>
         <div class="settings-item clickable" id="clearBtn" style="color:#e74c3c;">
           <div>
-            <div class="settings-label">清空所有数据</div>
-            <div class="settings-desc">⚠️ 此操作不可恢复</div>
+            <div class="settings-label">🗑️ 清空所有数据</div>
+            <div class="settings-desc">⚠️ 此操作不可恢复，建议先备份！</div>
           </div>
-          <div>🗑️</div>
+          <div>⚠️</div>
         </div>
       </div>
 

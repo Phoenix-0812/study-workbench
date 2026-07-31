@@ -672,14 +672,89 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+
+/* 导航左侧返回按钮组 */
+.reader-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* 导航中间标题 */
+.reader-nav-center {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+/* 导航右侧操作按钮组 */
+.reader-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .reader-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 读者内通用小按钮：不再"突兀" */
+.reader-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+.reader-btn:hover {
+  background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+.reader-btn:active {
+  transform: translateY(0);
+}
+.reader-btn[disabled] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+/* 强调版按钮：刷新推荐用 */
+.reader-btn.reader-btn-primary {
+  background: var(--accent-light);
+  color: var(--accent-dark);
+  border-color: transparent;
+  font-weight: 600;
+}
+.reader-btn.reader-btn-primary:hover {
+  filter: brightness(1.05);
+}
+/* 仅图标按钮 */
+.reader-btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 16px;
 }
 
 .reader-content {
