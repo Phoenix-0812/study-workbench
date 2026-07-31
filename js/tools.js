@@ -890,26 +890,187 @@ const Tools = {
     }, 0);
   },
 
+  /* ---------- DeepSeek AI 配置 ---------- */
+  _aiConfig: {
+    apiKey: null
+  },
+
+  _getApiKey() {
+    if (this._aiConfig.apiKey === null) {
+      try {
+        this._aiConfig.apiKey = localStorage.getItem('deepseek_api_key') || '';
+      } catch (e) {
+        this._aiConfig.apiKey = '';
+      }
+    }
+    return this._aiConfig.apiKey;
+  },
+
+  _setApiKey(key) {
+    this._aiConfig.apiKey = key || '';
+    try {
+      if (key) localStorage.setItem('deepseek_api_key', key);
+      else localStorage.removeItem('deepseek_api_key');
+    } catch (e) {}
+  },
+
+  // 调用 DeepSeek API
+  async _callDeepSeekAPI(messages) {
+    const apiKey = this._getApiKey();
+    if (!apiKey) return null;
+
+    try {
+      const resp = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: messages,
+          stream: false,
+          temperature: 0.7
+        })
+      });
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.error('DeepSeek API error:', resp.status, errText);
+        return null;
+      }
+      const data = await resp.json();
+      return data.choices[0]?.message?.content || null;
+    } catch (e) {
+      console.error('DeepSeek API fetch error:', e);
+      return null;
+    }
+  },
+
+  // AI搜题
+  async _aiSearchQuestion(text, subject) {
+    const subjectName = { math: '数学', chinese: '语文', english: '英语' }[subject] || subject;
+    const messages = [
+      {
+        role: 'system',
+        content: `你是一个专业的小学${subjectName}老师AI助手。请根据学生的题目给出详细的解题步骤和知识点讲解。格式要求：\n1. 先识别题目类型\n2. 给出分步解题过程（用①②③编号）\n3. 给出最终答案\n4. 总结涉及的知识点\n请用简洁清晰的语言，适合小学生理解。`
+      },
+      {
+        role: 'user',
+        content: `请讲解这道${subjectName}题：\n${text}`
+      }
+    ];
+    return await this._callDeepSeekAPI(messages);
+  },
+
+  // AI批改作业
+  async _aiCorrectHomework(question, userAnswer, subject) {
+    const subjectName = { math: '数学', chinese: '语文', english: '英语' }[subject] || subject;
+    const messages = [
+      {
+        role: 'system',
+        content: `你是一个专业的小学${subjectName}老师。请批改学生的作业答案。格式要求：\n1. 先判断答案是否正确（✅正确/❌错误）\n2. 如果错误，指出具体问题\n3. 给出正确的解题过程和答案\n4. 给出鼓励性评语\n请用适合小学生理解的语言。`
+      },
+      {
+        role: 'user',
+        content: `科目：${subjectName}\n题目：${question}\n学生答案：${userAnswer}\n请批改这份作业。`
+      }
+    ];
+    return await this._callDeepSeekAPI(messages);
+  },
+
+  // 简易 Markdown 渲染（支持标题、粗体、斜体、行内代码、代码块、列表、换行）
+  _renderMarkdown(md) {
+    if (!md) return '';
+    const lines = String(md).split('\n');
+    let html = '';
+    let inCodeBlock = false;
+    let codeBuffer = [];
+
+    for (let line of lines) {
+      if (/^```/.test(line.trim())) {
+        if (inCodeBlock) {
+          html += `<pre style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0;"><code>${this._escape(codeBuffer.join('\n'))}</code></pre>`;
+          codeBuffer = [];
+          inCodeBlock = false;
+        } else {
+          inCodeBlock = true;
+        }
+        continue;
+      }
+      if (inCodeBlock) {
+        codeBuffer.push(line);
+        continue;
+      }
+
+      let processed = this._escape(line);
+
+      if (/^### /.test(processed)) {
+        html += `<h4 style="margin:10px 0 6px;">${processed.replace(/^### /, '')}</h4>`;
+        continue;
+      }
+      if (/^## /.test(processed)) {
+        html += `<h3 style="margin:12px 0 6px;">${processed.replace(/^## /, '')}</h3>`;
+        continue;
+      }
+      if (/^# /.test(processed)) {
+        html += `<h2 style="margin:12px 0 6px;">${processed.replace(/^# /, '')}</h2>`;
+        continue;
+      }
+
+      processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      processed = processed.replace(/`([^`]+)`/g, '<code style="background:var(--bg-secondary);padding:1px 5px;border-radius:4px;">$1</code>');
+      processed = processed.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+      if (/^[·\-\*]\s+/.test(processed)) {
+        html += `<div style="padding-left:18px;margin:2px 0;">• ${processed.replace(/^[·\-\*]\s+/, '')}</div>`;
+        continue;
+      }
+
+      if (processed.trim() === '') {
+        html += '<br>';
+        continue;
+      }
+
+      html += `<div style="margin:4px 0;">${processed}</div>`;
+    }
+
+    if (inCodeBlock && codeBuffer.length) {
+      html += `<pre style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0;"><code>${this._escape(codeBuffer.join('\n'))}</code></pre>`;
+    }
+
+    return html;
+  },
+
   /* ---------- AI搜题讲解 ---------- */
   renderAisearch(container) {
     const history = this._loadHistory('study_aisearch_history');
+    const hasApiKey = !!this._getApiKey();
     const html = `
       <div class="page-header">
         <div>
           <button class="btn-secondary" id="aiBack">◀ 返回工具箱</button>
           <div class="page-title" style="margin-top:10px;">📸 AI搜题讲解</div>
-          <div class="page-subtitle">本地智能搜题，给出解题思路框架</div>
+          <div class="page-subtitle" id="aiSubtitle">${hasApiKey ? '已接入 DeepSeek AI，智能讲解解题思路' : '本地智能搜题，配置 API Key 后可启用 AI 讲解'}</div>
+        </div>
+        <button class="btn-secondary" id="aiSettings" title="设置 DeepSeek API Key" style="display:inline-flex;align-items:center;gap:6px;">⚙️ API Key</button>
+      </div>
+
+      <div class="glass-card" style="padding:8px;margin-bottom:12px;">
+        <div style="display:flex;gap:8px;">
+          <button class="btn-primary ai-tab active" data-mode="search" style="flex:1;">📚 搜题讲解</button>
+          <button class="btn-secondary ai-tab" data-mode="correct" style="flex:1;">✏️ 批改作业</button>
         </div>
       </div>
-      <div class="glass-card" style="padding:20px;">
+
+      <div id="aiSearchMode" class="glass-card" style="padding:20px;">
         <div style="font-weight:600;margin-bottom:8px;">📝 输入题目</div>
         <textarea id="aiInput" rows="4" placeholder="请输入题目文字，例如：解方程 2x+3=7" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
           <button class="btn-secondary" id="aiCameraBtn" style="display:inline-flex;align-items:center;gap:6px;">📷 立即拍照</button>
-          <input type="file" id="aiCameraFile" accept="image/*" capture="environment" style="display:none;">
           <button class="btn-secondary" id="aiGalleryBtn" style="display:inline-flex;align-items:center;gap:6px;">🖼️ 从相册选择</button>
-          <input type="file" id="aiGalleryFile" accept="image/*" style="display:none;">
         </div>
+        <input type="file" id="aiCameraFile" accept="image/*" style="display:none;">
+        <input type="file" id="aiGalleryFile" accept="image/*" style="display:none;">
         <div id="aiPreview" style="margin-top:12px;"></div>
         <div style="margin-top:14px;">
           <span style="font-weight:600;">科目：</span>
@@ -919,17 +1080,66 @@ const Tools = {
         </div>
         <button class="btn-primary" id="aiSearch" style="margin-top:16px;">🔍 AI搜题讲解</button>
       </div>
+
+      <div id="aiCorrectMode" class="glass-card" style="padding:20px;display:none;">
+        <div style="font-weight:600;margin-bottom:8px;">📝 输入题目</div>
+        <textarea id="aiQuestionInput" rows="3" placeholder="请输入题目" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
+        <div style="font-weight:600;margin:12px 0 8px;">✏️ 我的答案</div>
+        <textarea id="aiAnswerInput" rows="3" placeholder="请输入你的答案" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
+        <div style="margin-top:14px;">
+          <span style="font-weight:600;">科目：</span>
+          <label style="margin-right:12px;"><input type="radio" name="aiCorrectSubject" value="math" checked> 数学</label>
+          <label style="margin-right:12px;"><input type="radio" name="aiCorrectSubject" value="chinese"> 语文</label>
+          <label><input type="radio" name="aiCorrectSubject" value="english"> 英语</label>
+        </div>
+        <button class="btn-primary" id="aiCorrect" style="margin-top:16px;">✏️ AI批改作业</button>
+      </div>
+
       <div id="aiResult" style="margin-top:16px;"></div>
       <div class="glass-card" style="padding:16px;margin-top:16px;">
         <div style="font-weight:600;margin-bottom:8px;">📜 已搜题目历史</div>
         <div id="aiHistory"></div>
       </div>
+
+      <div id="aiKeyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+        <div class="glass-card" style="padding:24px;max-width:420px;width:90%;margin:auto;">
+          <div style="font-weight:700;font-size:16px;margin-bottom:12px;">⚙️ DeepSeek API Key 设置</div>
+          <input type="password" id="aiKeyInput" placeholder="粘贴你的 DeepSeek API Key" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;outline:none;">
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.5;">
+            获取地址：<a href="https://platform.deepseek.com/" target="_blank" style="color:var(--accent-dark);">https://platform.deepseek.com/</a><br>
+            配置后即可使用 DeepSeek AI 进行智能搜题讲解和作业批改。Key 仅保存在本地浏览器，不会上传。
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button class="btn-primary" id="aiKeySave" style="flex:1;">💾 保存</button>
+            <button class="btn-secondary" id="aiKeyClear" style="flex:1;">🗑️ 清除</button>
+            <button class="btn-secondary" id="aiKeyClose" style="flex:1;">取消</button>
+          </div>
+        </div>
+      </div>
     `;
     container.innerHTML = html;
     this._renderAisearchHistory(container, history);
-    // 统一的图片处理函数
+
+    // 设备检测：仅移动端为拍照 input 添加 capture 属性，桌面端不添加以免文件选择器打不开
+    const ua = navigator.userAgent || '';
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(ua);
+    const cameraInput = container.querySelector('#aiCameraFile');
+    // 先创建 input（已在 HTML 中，无 capture），再根据设备类型动态设置 capture 属性
+    if (isMobile) {
+      try {
+        cameraInput.setAttribute('capture', 'environment');
+      } catch (e) {
+        console.error('set capture attr error:', e);
+      }
+    }
+
+    // 统一的图片处理函数（含错误处理）
     const handleImageFile = (file) => {
       if (!file) return;
+      if (!file.type || !file.type.startsWith('image/')) {
+        UI.showToast('⚠️ 请选择图片文件');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = ev => {
         const preview = container.querySelector('#aiPreview');
@@ -938,35 +1148,167 @@ const Tools = {
             <img src="${ev.target.result}" style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--border-soft);object-fit:cover;">
             <div style="flex:1;min-width:0;">
               <div style="font-weight:600;margin-bottom:4px;">✅ 图片已上传</div>
-              <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">提示：由于是纯前端离线版本，图片无法联网OCR识别文字。请您在上方输入框中输入题目文字，即可获得AI智能讲解。</div>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">提示：请在下方输入框中输入题目文字，AI 将根据文字进行讲解。</div>
             </div>
           </div>
         `;
         UI.showToast('📷 图片已上传');
       };
-      reader.readAsDataURL(file);
+      reader.onerror = () => {
+        UI.showToast('⚠️ 图片读取失败，请重试');
+      };
+      try {
+        reader.readAsDataURL(file);
+      } catch (e) {
+        console.error('readAsDataURL error:', e);
+        UI.showToast('⚠️ 图片读取失败，请重试');
+      }
     };
+
+    // 触发文件选择（含错误处理，重置 value 以便重复选择同一文件）
+    const triggerFilePick = (inputEl, label) => {
+      try {
+        inputEl.value = '';
+        inputEl.click();
+      } catch (e) {
+        console.error(`${label} click error:`, e);
+        UI.showToast(`⚠️ 无法打开${label}，请重试`);
+      }
+    };
+
+    // 更新副标题
+    const refreshSubtitle = () => {
+      const sub = container.querySelector('#aiSubtitle');
+      if (sub) {
+        sub.textContent = this._getApiKey()
+          ? '已接入 DeepSeek AI，智能讲解解题思路'
+          : '本地智能搜题，配置 API Key 后可启用 AI 讲解';
+      }
+    };
+
     setTimeout(() => {
       container.querySelector('#aiBack').addEventListener('click', () => UI.navigate('tools'));
-      // 拍照：capture="environment" 直接调用后置摄像头
-      container.querySelector('#aiCameraBtn').addEventListener('click', () => container.querySelector('#aiCameraFile').click());
-      container.querySelector('#aiCameraFile').addEventListener('change', e => handleImageFile(e.target.files[0]));
-      // 从相册选择
-      container.querySelector('#aiGalleryBtn').addEventListener('click', () => container.querySelector('#aiGalleryFile').click());
+
+      // 模式切换
+      container.querySelectorAll('.ai-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const mode = tab.dataset.mode;
+          container.querySelectorAll('.ai-tab').forEach(t => {
+            t.classList.remove('active', 'btn-primary');
+            t.classList.add('btn-secondary');
+          });
+          tab.classList.add('active', 'btn-primary');
+          tab.classList.remove('btn-secondary');
+          container.querySelector('#aiSearchMode').style.display = mode === 'search' ? '' : 'none';
+          container.querySelector('#aiCorrectMode').style.display = mode === 'correct' ? '' : 'none';
+        });
+      });
+
+      // API Key 设置弹窗
+      const keyModal = container.querySelector('#aiKeyModal');
+      container.querySelector('#aiSettings').addEventListener('click', () => {
+        container.querySelector('#aiKeyInput').value = this._getApiKey() || '';
+        keyModal.style.display = 'flex';
+      });
+      container.querySelector('#aiKeyClose').addEventListener('click', () => { keyModal.style.display = 'none'; });
+      container.querySelector('#aiKeySave').addEventListener('click', () => {
+        const key = container.querySelector('#aiKeyInput').value.trim();
+        if (!key) { UI.showToast('请输入 API Key'); return; }
+        this._setApiKey(key);
+        keyModal.style.display = 'none';
+        refreshSubtitle();
+        UI.showToast('✅ API Key 已保存');
+      });
+      container.querySelector('#aiKeyClear').addEventListener('click', () => {
+        this._setApiKey('');
+        container.querySelector('#aiKeyInput').value = '';
+        refreshSubtitle();
+        UI.showToast('已清除 API Key');
+      });
+
+      // 拍照（动态 capture 已在上方设置）
+      container.querySelector('#aiCameraBtn').addEventListener('click', () => {
+        triggerFilePick(cameraInput, '拍照');
+      });
+      cameraInput.addEventListener('change', e => handleImageFile(e.target.files[0]));
+
+      // 从相册选择（桌面端也可正常打开文件选择器）
+      container.querySelector('#aiGalleryBtn').addEventListener('click', () => {
+        triggerFilePick(container.querySelector('#aiGalleryFile'), '相册');
+      });
       container.querySelector('#aiGalleryFile').addEventListener('change', e => handleImageFile(e.target.files[0]));
-      container.querySelector('#aiSearch').addEventListener('click', () => {
+
+      // 搜题讲解
+      const doSearch = async () => {
         const text = container.querySelector('#aiInput').value.trim();
         const subject = container.querySelector('input[name="aiSubject"]:checked').value;
         if (!text) { UI.showToast('请输入题目文字'); return; }
-        const result = this.analyzeQuestion(text, subject);
+
+        const btn = container.querySelector('#aiSearch');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '🤖 AI搜题中...';
+
+        let result = null;
+        let isAIResult = false;
+
+        if (this._getApiKey()) {
+          const aiText = await this._aiSearchQuestion(text, subject);
+          if (aiText) {
+            result = { type: 'AI讲解', content: aiText };
+            isAIResult = true;
+          } else {
+            UI.showToast('⚠️ AI 调用失败，已回退到本地规则引擎');
+            result = this.analyzeQuestion(text, subject);
+          }
+        } else {
+          result = this.analyzeQuestion(text, subject);
+        }
+
+        btn.disabled = false;
+        btn.textContent = originalText;
+
         if (!result) { UI.showToast('未能识别题目，请补充信息'); return; }
-        this._renderAisearchResult(container, text, subject, result);
-        // 存入历史，最多保留20条
+        this._renderAisearchResult(container, text, subject, result, isAIResult);
+
         const hist = this._loadHistory('study_aisearch_history');
-        hist.unshift({ text, subject, result, time: Date.now() });
+        hist.unshift({ text, subject, result, isAI: isAIResult, time: Date.now() });
         this._saveHistory('study_aisearch_history', hist.slice(0, 20));
         this._renderAisearchHistory(container, this._loadHistory('study_aisearch_history'));
-      });
+      };
+      container.querySelector('#aiSearch').addEventListener('click', doSearch);
+
+      // 批改作业
+      const doCorrect = async () => {
+        const question = container.querySelector('#aiQuestionInput').value.trim();
+        const userAnswer = container.querySelector('#aiAnswerInput').value.trim();
+        const subject = container.querySelector('input[name="aiCorrectSubject"]:checked').value;
+        if (!question) { UI.showToast('请输入题目'); return; }
+        if (!userAnswer) { UI.showToast('请输入你的答案'); return; }
+        if (!this._getApiKey()) { UI.showToast('⚠️ 批改作业需要先配置 API Key'); return; }
+
+        const btn = container.querySelector('#aiCorrect');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '🤖 AI批改中...';
+
+        const aiText = await this._aiCorrectHomework(question, userAnswer, subject);
+
+        btn.disabled = false;
+        btn.textContent = originalText;
+
+        if (!aiText) { UI.showToast('⚠️ AI 批改失败，请检查 API Key 或网络'); return; }
+
+        const result = { type: 'AI批改结果', content: aiText };
+        const displayText = `题目：${question}\n我的答案：${userAnswer}`;
+        this._renderAisearchResult(container, displayText, subject, result, true);
+
+        const hist = this._loadHistory('study_aisearch_history');
+        hist.unshift({ text: `[批改] ${question}`, subject, result, isAI: true, time: Date.now() });
+        this._saveHistory('study_aisearch_history', hist.slice(0, 20));
+        this._renderAisearchHistory(container, this._loadHistory('study_aisearch_history'));
+      };
+      container.querySelector('#aiCorrect').addEventListener('click', doCorrect);
     }, 0);
   },
 
@@ -1150,20 +1492,36 @@ const Tools = {
     return b / a;
   },
 
-  _renderAisearchResult(container, text, subject, result) {
+  _renderAisearchResult(container, text, subject, result, isAIResult) {
     const subjectName = { math: '数学', chinese: '语文', english: '英语' }[subject] || subject;
     const el = container.querySelector('#aiResult');
-    el.innerHTML = `
-      <div class="glass-card" style="padding:20px;">
-        <div style="font-weight:700;font-size:16px;margin-bottom:10px;">🤖 AI讲解结果</div>
-        <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">题目：</span>${this._escape(text)}</div>
-        <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">科目：</span>${subjectName}</div>
+    const useAI = isAIResult || (result && result.content);
+    let bodyHtml = '';
+    if (useAI && result.content) {
+      // AI 结果：直接用 markdown 渲染返回的文本，不再需要 type/steps/knowledge 结构
+      bodyHtml = `
+        <div style="color:var(--text-muted);margin-bottom:4px;">${this._escape(result.type || 'AI讲解')}：</div>
+        <div class="ai-markdown" style="line-height:1.7;font-size:14px;">${this._renderMarkdown(result.content)}</div>
+      `;
+    } else if (result && result.steps) {
+      // 本地规则引擎结果：type/steps/knowledge 结构
+      bodyHtml = `
         <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">识别类型：</span><strong>${this._escape(result.type)}</strong></div>
         <div style="margin-bottom:10px;">
           <div style="color:var(--text-muted);margin-bottom:4px;">解题步骤：</div>
           <div>${result.steps.map(s => `<div style="padding:2px 0;">${this._escape(s)}</div>`).join('')}</div>
         </div>
         <div><span style="color:var(--text-muted);">知识点总结：</span>${this._escape(result.knowledge)}</div>
+      `;
+    } else {
+      bodyHtml = `<div style="color:var(--text-muted);">暂无讲解内容</div>`;
+    }
+    el.innerHTML = `
+      <div class="glass-card" style="padding:20px;">
+        <div style="font-weight:700;font-size:16px;margin-bottom:10px;">🤖 ${useAI ? 'AI讲解结果' : '本地讲解结果'}</div>
+        <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">题目：</span>${this._escape(text).replace(/\n/g, '<br>')}</div>
+        <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">科目：</span>${subjectName}</div>
+        ${bodyHtml}
       </div>
     `;
   },
@@ -1178,14 +1536,14 @@ const Tools = {
     el.innerHTML = history.map((h, i) => `
       <div class="clickable" data-aihist="${i}" style="padding:10px;border:1px solid var(--border-soft);border-radius:10px;margin-bottom:8px;">
         <div style="font-size:13px;color:var(--text-primary);">${this._escape(h.text.slice(0, 40))}${h.text.length > 40 ? '...' : ''}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${subjectName[h.subject] || h.subject} · ${new Date(h.time).toLocaleString('zh-CN')}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${subjectName[h.subject] || h.subject}${h.isAI ? ' · AI' : ' · 本地'} · ${new Date(h.time).toLocaleString('zh-CN')}</div>
       </div>
     `).join('');
     el.querySelectorAll('[data-aihist]').forEach(item => {
       item.addEventListener('click', () => {
         const idx = parseInt(item.dataset.aihist);
         const h = history[idx];
-        if (h) this._renderAisearchResult(container, h.text, h.subject, h.result);
+        if (h) this._renderAisearchResult(container, h.text, h.subject, h.result, h.isAI);
       });
     });
   },

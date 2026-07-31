@@ -65,7 +65,12 @@ const App = {
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
+      // 显示安装按钮
+      this._showInstallButton(deferredPrompt);
     });
+
+    // iOS Safari 安装提示（不支持 beforeinstallprompt）
+    this._showIOSInstallTip();
 
     // Share functionality for widget
     if (navigator.share) {
@@ -176,6 +181,82 @@ const App = {
         ticking = true;
       }
     }, { passive: true });
+  },
+
+  // 显示PWA安装按钮（Android/Chrome）
+  _showInstallButton(deferredPrompt) {
+    // 首次访问5秒后显示安装提示
+    setTimeout(() => {
+      if (document.getElementById('pwaInstallTip')) return;
+      // 检查是否已安装（standalone模式）
+      if (window.matchMedia('(display-mode: standalone)').matches) return;
+
+      const tip = document.createElement('div');
+      tip.id = 'pwaInstallTip';
+      tip.style.cssText = `
+        position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+        background:linear-gradient(135deg,#ff9a9e,#fad0c4); color:#fff;
+        padding:12px 24px; border-radius:20px; font-size:14px; font-weight:600;
+        box-shadow:0 4px 20px rgba(255,154,158,0.4); z-index:9999;
+        cursor:pointer; display:flex; align-items:center; gap:8px;
+        animation: slideUp 0.3s ease;
+      `;
+      tip.innerHTML = '📲 <span>添加到桌面，离线也能用！</span>';
+      tip.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            UI.showToast('✅ 已添加到桌面！');
+          }
+          deferredPrompt = null;
+        }
+        tip.remove();
+      });
+      document.body.appendChild(tip);
+
+      // 15秒后自动消失
+      setTimeout(() => { if (tip.parentNode) tip.remove(); }, 15000);
+    }, 5000);
+  },
+
+  // iOS Safari 安装引导（iOS不支持beforeinstallprompt）
+  _showIOSInstallTip() {
+    // 检测iOS Safari
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (!isIOS || !isSafari) return;
+    // 已安装则不提示
+    if (window.matchMedia('(display-mode: standalone)').matches) return;
+    // 检查是否已提示过
+    if (localStorage.getItem('ios_install_tip_shown')) return;
+
+    setTimeout(() => {
+      if (document.getElementById('iosInstallTip')) return;
+      const tip = document.createElement('div');
+      tip.id = 'iosInstallTip';
+      tip.style.cssText = `
+        position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+        background:rgba(0,0,0,0.85); color:#fff;
+        padding:14px 20px; border-radius:16px; font-size:13px; line-height:1.6;
+        box-shadow:0 4px 20px rgba(0,0,0,0.3); z-index:9999;
+        max-width:320px; text-align:center;
+        animation: slideUp 0.3s ease;
+      `;
+      tip.innerHTML = `
+        <div style="margin-bottom:8px;">📲 <strong>添加到主屏幕</strong></div>
+        <div>点击底部 <span style="display:inline-block;transform:rotate(180deg);">⬆</span> 分享按钮 → 选择「添加到主屏幕」</div>
+        <div style="margin-top:8px;font-size:11px;color:#aaa;">添加后可像App一样使用，离线也能做题</div>
+        <div style="margin-top:8px;">
+          <button id="iosTipClose" style="background:rgba(255,255,255,0.2);color:#fff;border:none;padding:4px 16px;border-radius:8px;font-size:12px;cursor:pointer;">知道了</button>
+        </div>
+      `;
+      document.body.appendChild(tip);
+      document.getElementById('iosTipClose')?.addEventListener('click', () => {
+        localStorage.setItem('ios_install_tip_shown', '1');
+        tip.remove();
+      });
+    }, 8000);
   },
 
   // 显示"发现新版本"横幅提示（安全区域适配，不突兀）

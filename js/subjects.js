@@ -1,10 +1,42 @@
-/* 科目学习模块 - 按上/下册分区 + 做完一道刷新一道 + 做题记录库 + AI练习总结 */
+/* 科目学习模块 - 按上/下册分区 + 做完一道刷新一道 + 做题记录库 + AI练习总结 + 自动轮换 */
 const Subjects = {
   // 当前批次展示数量（做完一道补一道，保持队列长度）
   BATCH_SIZE: 8,
   practiceResults: [],
   // 当前展示中的题目ID队列（用于"做完刷新"）
   _shownIds: [],
+  // 每个科目/年级/册的洗牌顺序缓存
+  _shuffleCache: {},
+  // 轮换次数记录
+  _rotationCount: {},
+
+  // Fisher-Yates 洗牌
+  _shuffle(array) {
+    const arr = array.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  },
+
+  // 获取洗牌后的题目列表（每个会话缓存在内存中）
+  _getShuffledQuestions(subject, grade, volume) {
+    const key = `${subject}_${grade}_${volume}`;
+    if (!this._shuffleCache[key]) {
+      const all = this.getAllQuestions(subject, grade, volume);
+      this._shuffleCache[key] = this._shuffle(all);
+    }
+    return this._shuffleCache[key];
+  },
+
+  // 重新洗牌（轮换时调用）
+  _reshuffle(subject, grade, volume) {
+    const key = `${subject}_${grade}_${volume}`;
+    const all = this.getAllQuestions(subject, grade, volume);
+    this._shuffleCache[key] = this._shuffle(all);
+    this._rotationCount[key] = (this._rotationCount[key] || 0) + 1;
+  },
 
   // 取某科目某年级某册的所有题目（上册=旧年级巩固, 下册=新学期预习）
   getAllQuestions(subject, grade, volume) {
@@ -16,6 +48,27 @@ const Subjects = {
   getDoneIds(subject, grade, volume) {
     const records = State.getRecords().filter(r => r.type === 'question_answer' && r.subject === subject && r.grade === grade && r.volume === volume);
     return new Set(records.map(r => r.qid));
+  },
+
+  // 检查是否需要自动轮换（做完一半时触发）
+  _checkAutoRotation(subject, grade, volume) {
+    const allQuestions = this.getAllQuestions(subject, grade, volume);
+    const doneIds = this.getDoneIds(subject, grade, volume);
+    const total = allQuestions.length;
+    const doneCount = doneIds.size;
+
+    if (total > 0 && doneCount >= total / 2) {
+      // 自动轮换：清除做题记录，重新洗牌
+      const records = State.getRecords().filter(r => !(r.type === 'question_answer' && r.subject === subject && r.grade === grade && r.volume === volume));
+      Storage.set(Storage.KEYS.RECORDS, records);
+      this._reshuffle(subject, grade, volume);
+      this.practiceResults = [];
+      const key = `${subject}_${grade}_${volume}`;
+      const rotCount = this._rotationCount[key] || 1;
+      UI.showToast(`🔄 已完成一半题目，自动为你换第${rotCount}批新题！`, 3000);
+      return true;
+    }
+    return false;
   },
 
   // 取课本该册单元标题（兼容 volumes 与旧 units 结构）
@@ -54,7 +107,7 @@ const Subjects = {
     }
     const volume = State.currentTab;
 
-    const allQuestions = this.getAllQuestions(subject, State.currentGrade, volume);
+    const allQuestions = this._getShuffledQuestions(subject, State.currentGrade, volume);
     const doneIds = this.getDoneIds(subject, State.currentGrade, volume);
     const unitNames = this.getUnitNames(subject, gradeNum, volume);
     const doneCount = doneIds.size;
@@ -87,6 +140,7 @@ const Subjects = {
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn-secondary" id="historyBtn" style="padding:8px 16px;font-size:13px;">📋 做题记录</button>
+          <button class="btn-secondary" id="refreshBatchBtn" style="padding:8px 16px;font-size:13px;">🔀 换一批</button>
           <button class="btn-secondary" id="resetDoneBtn" style="padding:8px 16px;font-size:13px;">🔄 重置进度</button>
         </div>
       </div>
@@ -142,6 +196,12 @@ const Subjects = {
       if (summaryBtn) summaryBtn.addEventListener('click', () => this.showPracticeSummary(subject));
       // 做题记录
       wrap.querySelector('#historyBtn').addEventListener('click', () => this.showHistory(subject, State.currentGrade, volume));
+      // 换一批：重新洗牌并刷新
+      wrap.querySelector('#refreshBatchBtn').addEventListener('click', () => {
+        this._reshuffle(subject, State.currentGrade, volume);
+        UI.showToast('🔀 已换一批新题！');
+        UI.navigate(subject);
+      });
       // 重置进度
       wrap.querySelector('#resetDoneBtn').addEventListener('click', () => this.resetDone(subject, State.currentGrade, volume));
     }, 0);
@@ -227,7 +287,7 @@ const Subjects = {
   attachQuestionHandlers(container, subject, grade, volume) {
     container.querySelectorAll('.question-card').forEach(card => {
       const qid = card.dataset.qid;
-      const allQuestions = this.getAllQuestions(subject, grade, volume);
+      const allQuestions = this._getShuffledQuestions(subject, grade, volume);
       const q = allQuestions.find(x => x.id === qid);
       if (!q) return;
 
@@ -336,7 +396,14 @@ const Subjects = {
 
   // 做完一道后刷新：移除已答题卡片，在列表末尾补一道新的未做题
   refreshAfterAnswer(subject, grade, volume, doneQid) {
-    const allQuestions = this.getAllQuestions(subject, grade, volume);
+    // 检查是否需要自动轮换（做完一半触发）
+    if (this._checkAutoRotation(subject, grade, volume)) {
+      // 自动轮换后重新加载页面
+      setTimeout(() => UI.navigate(subject), 1000);
+      return;
+    }
+
+    const allQuestions = this._getShuffledQuestions(subject, grade, volume);
     const doneIds = this.getDoneIds(subject, grade, volume);
     const listEl = document.getElementById('questionList');
     if (!listEl) return;
@@ -416,7 +483,7 @@ const Subjects = {
   },
 
   updateProgressBar(subject, grade, volume) {
-    const allQuestions = this.getAllQuestions(subject, grade, volume);
+    const allQuestions = this._getShuffledQuestions(subject, grade, volume);
     const doneIds = this.getDoneIds(subject, grade, volume);
     const bar = document.querySelector('.glass-card strong');
     // 简单刷新顶部进度文字
@@ -433,7 +500,7 @@ const Subjects = {
       UI.showToast('还没有做题记录，先做几道题吧！');
       return;
     }
-    const allQuestions = this.getAllQuestions(subject, grade, volume);
+    const allQuestions = this._getShuffledQuestions(subject, grade, volume);
     const gradeName = { grade4: '四年级', grade5: '五年级', grade6: '六年级' }[grade];
     const correct = records.filter(r => r.correct).length;
     const wrong = records.length - correct;
@@ -476,7 +543,8 @@ const Subjects = {
     const records = State.getRecords().filter(r => !(r.type === 'question_answer' && r.subject === subject && r.grade === grade && r.volume === volume));
     Storage.set(Storage.KEYS.RECORDS, records);
     this.practiceResults = [];
-    UI.showToast('进度已重置');
+    this._reshuffle(subject, grade, volume);
+    UI.showToast('进度已重置，题目已重新洗牌');
     UI.navigate(subject);
   },
 

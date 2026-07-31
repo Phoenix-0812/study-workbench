@@ -1,20 +1,63 @@
 {
   "name": "小学学习工作台",
   "short_name": "学习工作台",
-  "description": "小学全科学习工作台 - 语文数学英语全覆盖",
+  "description": "小学全科学习工作台 - 语文数学英语全覆盖，题库练习+试卷模拟+AI批改",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#fff5f7",
   "theme_color": "#ffb6c1",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='90' fill='%23ffd6e0'/><text x='256' y='380' font-size='300' text-anchor='middle' font-family='sans-serif'>🌸</text></svg>",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-120.png",
+      "sizes": "120x120",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-48.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "categories": ["education", "personalization"],
-  "lang": "zh-CN"
+  "lang": "zh-CN",
+  "prefer_related_applications": false
 }
