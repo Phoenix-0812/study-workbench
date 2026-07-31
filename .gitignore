@@ -9,3 +9,11 @@ Thumbs.db
 *.swp
 # 依赖
 node_modules/
+# 部署包/打包产物
+deploy_pkg/
+study-workbench-deploy.zip
+deploy.sh
+# Python 缓存
+__pycache__/
+*.pyc
+gen_dict.py

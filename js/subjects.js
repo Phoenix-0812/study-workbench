@@ -165,9 +165,19 @@ const Subjects = {
       // 按单元分组显示当前批次
       html += '<div id="questionList">' + this.renderBatchHtml(batch, unitNames, allQuestions) + '</div>';
       html += `
-        <div class="glass-card" style="padding:14px;margin:16px 0;text-align:center;position:sticky;bottom:80px;z-index:50;">
-          <button class="btn-primary" id="practiceSummaryBtn" style="padding:12px 32px;">🤖 查看本次练习AI总结</button>
+        <!-- AI总结悬浮球 - 透明毛玻璃 + 可爱机器人 -->
+        <div id="aiSummaryFab" style="position:fixed;right:16px;bottom:120px;z-index:9999;">
+          <div id="aiSummaryBall" style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1.5px solid rgba(255,255,255,0.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform 0.2s;">
+            🤖
+          </div>
+          <div id="aiSummaryTip" style="position:absolute;right:58px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;white-space:nowrap;pointer-events:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
+            点我看AI总结
+          </div>
         </div>
+        <style>
+          #aiSummaryBall:active{transform:scale(0.92);}
+          #aiSummaryFab.ai-tip-hide #aiSummaryTip{opacity:0;transition:opacity 0.3s;pointer-events:none;}
+        </style>
       `;
     }
 
@@ -191,9 +201,78 @@ const Subjects = {
       });
       // 题目交互
       this.attachQuestionHandlers(wrap, subject, State.currentGrade, volume);
-      // AI总结
-      const summaryBtn = wrap.querySelector('#practiceSummaryBtn');
-      if (summaryBtn) summaryBtn.addEventListener('click', () => this.showPracticeSummary(subject));
+      // AI总结悬浮球：单击触发 + 拖动
+      const fab = wrap.querySelector('#aiSummaryFab');
+      const ball = wrap.querySelector('#aiSummaryBall');
+      const tip = wrap.querySelector('#aiSummaryTip');
+      if (fab && ball) {
+        let isDragging = false;
+        let startX, startY, initLeft, initTop;
+        let moved = false;
+        let downTime = 0;
+
+        const onDown = (e) => {
+          const pt = e.touches ? e.touches[0] : e;
+          isDragging = true;
+          moved = false;
+          downTime = Date.now();
+          startX = pt.clientX;
+          startY = pt.clientY;
+          const rect = fab.getBoundingClientRect();
+          initLeft = rect.left;
+          initTop = rect.top;
+          fab.style.left = initLeft + 'px';
+          fab.style.top = initTop + 'px';
+          fab.style.right = 'auto';
+          fab.style.bottom = 'auto';
+          ball.style.cursor = 'grabbing';
+          if (e.cancelable) e.preventDefault();
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+          document.addEventListener('touchmove', onMove, { passive: false });
+          document.addEventListener('touchend', onUp);
+        };
+        const onMove = (e) => {
+          if (!isDragging) return;
+          const pt = e.touches ? e.touches[0] : e;
+          const dx = pt.clientX - startX;
+          const dy = pt.clientY - startY;
+          if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
+          if (moved && e.cancelable) e.preventDefault();
+          let newLeft = initLeft + dx;
+          let newTop = initTop + dy;
+          const maxLeft = window.innerWidth - fab.offsetWidth - 4;
+          const maxTop = window.innerHeight - fab.offsetHeight - 4;
+          newLeft = Math.max(4, Math.min(maxLeft, newLeft));
+          newTop = Math.max(4, Math.min(maxTop, newTop));
+          fab.style.left = newLeft + 'px';
+          fab.style.top = newTop + 'px';
+        };
+        const onUp = () => {
+          isDragging = false;
+          ball.style.cursor = 'grab';
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onUp);
+          // 如果没有拖动，视为点击
+          if (!moved && Date.now() - downTime < 500) {
+            this.showPracticeSummary(subject);
+          }
+        };
+
+        ball.addEventListener('mousedown', onDown);
+        ball.addEventListener('touchstart', onDown, { passive: false });
+        ball.addEventListener('click', (e) => {
+          // click也能触发（桌面端更友好）
+          if (!moved) this.showPracticeSummary(subject);
+        });
+
+        // 3秒后自动隐藏提示
+        setTimeout(() => { fab.classList.add('ai-tip-hide'); }, 3000);
+        // 点击一次后永久隐藏提示
+        ball.addEventListener('click', () => { fab.classList.add('ai-tip-hide'); });
+      }
       // 做题记录
       wrap.querySelector('#historyBtn').addEventListener('click', () => this.showHistory(subject, State.currentGrade, volume));
       // 换一批：重新洗牌并刷新

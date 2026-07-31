@@ -752,11 +752,15 @@ const Tools = {
         </div>
         <div class="card card-accent card-accent-mint clickable" data-tool="aisearch">
           <div class="card-title">📸 AI搜题讲解</div>
-          <div class="card-desc">拍照或输入题目，AI智能搜题并讲解思路。</div>
+          <div class="card-desc">🆓 永久免费！本地智能搜题、解题思路讲解、批改作业。</div>
         </div>
         <div class="card card-accent clickable" data-tool="dictionary">
           <div class="card-title">📕 语文词典</div>
-          <div class="card-desc">查汉字拼音、笔顺、释义、组词造句。</div>
+          <div class="card-desc">查词语、成语、古诗词、文言文（7000+词条）。</div>
+        </div>
+        <div class="card card-accent card-accent-mint clickable" data-tool="knowledge">
+          <div class="card-title">🔍 知识搜索</div>
+          <div class="card-desc">全面搜索引擎：成语、古诗词、文言文、百科、生活常识、安全、节日等。</div>
         </div>
         <div class="card card-accent card-accent-yellow clickable" data-tool="translate">
           <div class="card-title">🌐 英语翻译</div>
@@ -795,6 +799,7 @@ const Tools = {
     if (tool === 'calculator') this.renderCalculator(container);
     else if (tool === 'aisearch') this.renderAisearch(container);
     else if (tool === 'dictionary') this.renderDictionary(container);
+    else if (tool === 'knowledge') this.renderKnowledgeSearch(container);
     else if (tool === 'translate') this.renderTranslate(container);
     else { UI.navigate('tools'); return; }
     container.classList.add('page-enter');
@@ -1044,15 +1049,13 @@ const Tools = {
   /* ---------- AI搜题讲解 ---------- */
   renderAisearch(container) {
     const history = this._loadHistory('study_aisearch_history');
-    const hasApiKey = !!this._getApiKey();
     const html = `
       <div class="page-header">
         <div>
           <button class="btn-secondary" id="aiBack">◀ 返回工具箱</button>
           <div class="page-title" style="margin-top:10px;">📸 AI搜题讲解</div>
-          <div class="page-subtitle" id="aiSubtitle">${hasApiKey ? '已接入 DeepSeek AI，智能讲解解题思路' : '本地智能搜题，配置 API Key 后可启用 AI 讲解'}</div>
+          <div class="page-subtitle">🆓 永久免费！本地智能讲解，无需配置</div>
         </div>
-        <button class="btn-secondary" id="aiSettings" title="设置 DeepSeek API Key" style="display:inline-flex;align-items:center;gap:6px;">⚙️ API Key</button>
       </div>
 
       <div class="glass-card" style="padding:8px;margin-bottom:12px;">
@@ -1066,11 +1069,16 @@ const Tools = {
         <div style="font-weight:600;margin-bottom:8px;">📝 输入题目</div>
         <textarea id="aiInput" rows="4" placeholder="请输入题目文字，例如：解方程 2x+3=7" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
-          <button class="btn-secondary" id="aiCameraBtn" style="display:inline-flex;align-items:center;gap:6px;">📷 立即拍照</button>
-          <button class="btn-secondary" id="aiGalleryBtn" style="display:inline-flex;align-items:center;gap:6px;">🖼️ 从相册选择</button>
+          <!-- 拍照：input 直接嵌套在 label 里，WebView最可靠的方式 -->
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:10px 20px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:10px;font-size:14px;" for="aiCameraFile">
+            📷 立即拍照
+            <input type="file" id="aiCameraFile" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:0;height:0;">
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:10px 20px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:10px;font-size:14px;" for="aiGalleryFile">
+            🖼️ 从相册选择
+            <input type="file" id="aiGalleryFile" accept="image/*" style="position:absolute;opacity:0;width:0;height:0;">
+          </label>
         </div>
-        <input type="file" id="aiCameraFile" accept="image/*" style="display:none;">
-        <input type="file" id="aiGalleryFile" accept="image/*" style="display:none;">
         <div id="aiPreview" style="margin-top:12px;"></div>
         <div style="margin-top:14px;">
           <span style="font-weight:600;">科目：</span>
@@ -1082,7 +1090,7 @@ const Tools = {
       </div>
 
       <div id="aiCorrectMode" class="glass-card" style="padding:20px;display:none;">
-        <div style="font-weight:600;margin-bottom:8px;">📝 输入题目</div>
+        <div style="font-weight:600;margin-bottom:8px;">📝 题目</div>
         <textarea id="aiQuestionInput" rows="3" placeholder="请输入题目" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
         <div style="font-weight:600;margin:12px 0 8px;">✏️ 我的答案</div>
         <textarea id="aiAnswerInput" rows="3" placeholder="请输入你的答案" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
@@ -1100,40 +1108,11 @@ const Tools = {
         <div style="font-weight:600;margin-bottom:8px;">📜 已搜题目历史</div>
         <div id="aiHistory"></div>
       </div>
-
-      <div id="aiKeyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
-        <div class="glass-card" style="padding:24px;max-width:420px;width:90%;margin:auto;">
-          <div style="font-weight:700;font-size:16px;margin-bottom:12px;">⚙️ DeepSeek API Key 设置</div>
-          <input type="password" id="aiKeyInput" placeholder="粘贴你的 DeepSeek API Key" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;outline:none;">
-          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.5;">
-            获取地址：<a href="https://platform.deepseek.com/" target="_blank" style="color:var(--accent-dark);">https://platform.deepseek.com/</a><br>
-            配置后即可使用 DeepSeek AI 进行智能搜题讲解和作业批改。Key 仅保存在本地浏览器，不会上传。
-          </div>
-          <div style="display:flex;gap:10px;margin-top:14px;">
-            <button class="btn-primary" id="aiKeySave" style="flex:1;">💾 保存</button>
-            <button class="btn-secondary" id="aiKeyClear" style="flex:1;">🗑️ 清除</button>
-            <button class="btn-secondary" id="aiKeyClose" style="flex:1;">取消</button>
-          </div>
-        </div>
-      </div>
     `;
     container.innerHTML = html;
     this._renderAisearchHistory(container, history);
 
-    // 设备检测：仅移动端为拍照 input 添加 capture 属性，桌面端不添加以免文件选择器打不开
-    const ua = navigator.userAgent || '';
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(ua);
-    const cameraInput = container.querySelector('#aiCameraFile');
-    // 先创建 input（已在 HTML 中，无 capture），再根据设备类型动态设置 capture 属性
-    if (isMobile) {
-      try {
-        cameraInput.setAttribute('capture', 'environment');
-      } catch (e) {
-        console.error('set capture attr error:', e);
-      }
-    }
-
-    // 统一的图片处理函数（含错误处理）
+    // 图片处理
     const handleImageFile = (file) => {
       if (!file) return;
       if (!file.type || !file.type.startsWith('image/')) {
@@ -1148,42 +1127,14 @@ const Tools = {
             <img src="${ev.target.result}" style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--border-soft);object-fit:cover;">
             <div style="flex:1;min-width:0;">
               <div style="font-weight:600;margin-bottom:4px;">✅ 图片已上传</div>
-              <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">提示：请在下方输入框中输入题目文字，AI 将根据文字进行讲解。</div>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">请在上方输入框中输入题目文字，AI将进行智能讲解。</div>
             </div>
           </div>
         `;
-        UI.showToast('📷 图片已上传');
+        UI.showToast('📷 图片已上传，请输入题目');
       };
-      reader.onerror = () => {
-        UI.showToast('⚠️ 图片读取失败，请重试');
-      };
-      try {
-        reader.readAsDataURL(file);
-      } catch (e) {
-        console.error('readAsDataURL error:', e);
-        UI.showToast('⚠️ 图片读取失败，请重试');
-      }
-    };
-
-    // 触发文件选择（含错误处理，重置 value 以便重复选择同一文件）
-    const triggerFilePick = (inputEl, label) => {
-      try {
-        inputEl.value = '';
-        inputEl.click();
-      } catch (e) {
-        console.error(`${label} click error:`, e);
-        UI.showToast(`⚠️ 无法打开${label}，请重试`);
-      }
-    };
-
-    // 更新副标题
-    const refreshSubtitle = () => {
-      const sub = container.querySelector('#aiSubtitle');
-      if (sub) {
-        sub.textContent = this._getApiKey()
-          ? '已接入 DeepSeek AI，智能讲解解题思路'
-          : '本地智能搜题，配置 API Key 后可启用 AI 讲解';
-      }
+      reader.onerror = () => UI.showToast('⚠️ 图片读取失败');
+      try { reader.readAsDataURL(file); } catch (e) { UI.showToast('⚠️ 图片读取失败'); }
     };
 
     setTimeout(() => {
@@ -1193,53 +1144,24 @@ const Tools = {
       container.querySelectorAll('.ai-tab').forEach(tab => {
         tab.addEventListener('click', () => {
           const mode = tab.dataset.mode;
-          container.querySelectorAll('.ai-tab').forEach(t => {
-            t.classList.remove('active', 'btn-primary');
-            t.classList.add('btn-secondary');
-          });
-          tab.classList.add('active', 'btn-primary');
+          container.querySelectorAll('.ai-tab').forEach(t => { t.classList.remove('active','btn-primary'); t.classList.add('btn-secondary'); });
+          tab.classList.add('active','btn-primary');
           tab.classList.remove('btn-secondary');
           container.querySelector('#aiSearchMode').style.display = mode === 'search' ? '' : 'none';
           container.querySelector('#aiCorrectMode').style.display = mode === 'correct' ? '' : 'none';
         });
       });
 
-      // API Key 设置弹窗
-      const keyModal = container.querySelector('#aiKeyModal');
-      container.querySelector('#aiSettings').addEventListener('click', () => {
-        container.querySelector('#aiKeyInput').value = this._getApiKey() || '';
-        keyModal.style.display = 'flex';
+      // 拍照/相册：input在label内部，change事件触发
+      container.querySelector('#aiCameraFile').addEventListener('change', e => {
+        if (e.target.files && e.target.files[0]) handleImageFile(e.target.files[0]);
       });
-      container.querySelector('#aiKeyClose').addEventListener('click', () => { keyModal.style.display = 'none'; });
-      container.querySelector('#aiKeySave').addEventListener('click', () => {
-        const key = container.querySelector('#aiKeyInput').value.trim();
-        if (!key) { UI.showToast('请输入 API Key'); return; }
-        this._setApiKey(key);
-        keyModal.style.display = 'none';
-        refreshSubtitle();
-        UI.showToast('✅ API Key 已保存');
-      });
-      container.querySelector('#aiKeyClear').addEventListener('click', () => {
-        this._setApiKey('');
-        container.querySelector('#aiKeyInput').value = '';
-        refreshSubtitle();
-        UI.showToast('已清除 API Key');
+      container.querySelector('#aiGalleryFile').addEventListener('change', e => {
+        if (e.target.files && e.target.files[0]) handleImageFile(e.target.files[0]);
       });
 
-      // 拍照（动态 capture 已在上方设置）
-      container.querySelector('#aiCameraBtn').addEventListener('click', () => {
-        triggerFilePick(cameraInput, '拍照');
-      });
-      cameraInput.addEventListener('change', e => handleImageFile(e.target.files[0]));
-
-      // 从相册选择（桌面端也可正常打开文件选择器）
-      container.querySelector('#aiGalleryBtn').addEventListener('click', () => {
-        triggerFilePick(container.querySelector('#aiGalleryFile'), '相册');
-      });
-      container.querySelector('#aiGalleryFile').addEventListener('change', e => handleImageFile(e.target.files[0]));
-
-      // 搜题讲解
-      const doSearch = async () => {
+      // 搜题讲解（本地引擎，永久免费）
+      const doSearch = () => {
         const text = container.querySelector('#aiInput').value.trim();
         const subject = container.querySelector('input[name="aiSubject"]:checked').value;
         if (!text) { UI.showToast('请输入题目文字'); return; }
@@ -1247,66 +1169,51 @@ const Tools = {
         const btn = container.querySelector('#aiSearch');
         const originalText = btn.textContent;
         btn.disabled = true;
-        btn.textContent = '🤖 AI搜题中...';
+        btn.textContent = '🤖 智能讲解中...';
 
-        let result = null;
-        let isAIResult = false;
+        // 本地规则引擎分析
+        setTimeout(() => {
+          const result = this.analyzeQuestion(text, subject);
+          btn.disabled = false;
+          btn.textContent = originalText;
 
-        if (this._getApiKey()) {
-          const aiText = await this._aiSearchQuestion(text, subject);
-          if (aiText) {
-            result = { type: 'AI讲解', content: aiText };
-            isAIResult = true;
-          } else {
-            UI.showToast('⚠️ AI 调用失败，已回退到本地规则引擎');
-            result = this.analyzeQuestion(text, subject);
-          }
-        } else {
-          result = this.analyzeQuestion(text, subject);
-        }
+          if (!result) { UI.showToast('未能识别题目，请补充信息'); return; }
+          this._renderAisearchResult(container, text, subject, result, false);
 
-        btn.disabled = false;
-        btn.textContent = originalText;
-
-        if (!result) { UI.showToast('未能识别题目，请补充信息'); return; }
-        this._renderAisearchResult(container, text, subject, result, isAIResult);
-
-        const hist = this._loadHistory('study_aisearch_history');
-        hist.unshift({ text, subject, result, isAI: isAIResult, time: Date.now() });
-        this._saveHistory('study_aisearch_history', hist.slice(0, 20));
-        this._renderAisearchHistory(container, this._loadHistory('study_aisearch_history'));
+          const hist = this._loadHistory('study_aisearch_history');
+          hist.unshift({ text, subject, result, isAI: false, time: Date.now() });
+          this._saveHistory('study_aisearch_history', hist.slice(0, 20));
+          this._renderAisearchHistory(container, this._loadHistory('study_aisearch_history'));
+        }, 300);
       };
       container.querySelector('#aiSearch').addEventListener('click', doSearch);
 
-      // 批改作业
-      const doCorrect = async () => {
+      // 批改作业（本地引擎，永久免费）
+      const doCorrect = () => {
         const question = container.querySelector('#aiQuestionInput').value.trim();
         const userAnswer = container.querySelector('#aiAnswerInput').value.trim();
         const subject = container.querySelector('input[name="aiCorrectSubject"]:checked').value;
         if (!question) { UI.showToast('请输入题目'); return; }
         if (!userAnswer) { UI.showToast('请输入你的答案'); return; }
-        if (!this._getApiKey()) { UI.showToast('⚠️ 批改作业需要先配置 API Key'); return; }
 
         const btn = container.querySelector('#aiCorrect');
         const originalText = btn.textContent;
         btn.disabled = true;
-        btn.textContent = '🤖 AI批改中...';
+        btn.textContent = '🤖 批改中...';
 
-        const aiText = await this._aiCorrectHomework(question, userAnswer, subject);
+        setTimeout(() => {
+          const result = this._correctHomework(question, userAnswer, subject);
+          btn.disabled = false;
+          btn.textContent = originalText;
 
-        btn.disabled = false;
-        btn.textContent = originalText;
+          const displayText = `题目：${question}\n我的答案：${userAnswer}`;
+          this._renderAisearchResult(container, displayText, subject, result, false);
 
-        if (!aiText) { UI.showToast('⚠️ AI 批改失败，请检查 API Key 或网络'); return; }
-
-        const result = { type: 'AI批改结果', content: aiText };
-        const displayText = `题目：${question}\n我的答案：${userAnswer}`;
-        this._renderAisearchResult(container, displayText, subject, result, true);
-
-        const hist = this._loadHistory('study_aisearch_history');
-        hist.unshift({ text: `[批改] ${question}`, subject, result, isAI: true, time: Date.now() });
-        this._saveHistory('study_aisearch_history', hist.slice(0, 20));
-        this._renderAisearchHistory(container, this._loadHistory('study_aisearch_history'));
+          const hist = this._loadHistory('study_aisearch_history');
+          hist.unshift({ text: `[批改] ${question}`, subject, result, isAI: false, time: Date.now() });
+          this._saveHistory('study_aisearch_history', hist.slice(0, 20));
+          this._renderAisearchHistory(container, this._loadHistory('study_aisearch_history'));
+        }, 400);
       };
       container.querySelector('#aiCorrect').addEventListener('click', doCorrect);
     }, 0);
@@ -1318,6 +1225,38 @@ const Tools = {
     if (!t) return null;
 
     if (subject === 'math') {
+      // 分数题
+      if (/分数|几分之几|约分|通分/.test(t)) {
+        return {
+          type: '🔢 分数题',
+          steps: ['① 找到分子和分母；', '② 约分：分子分母同时除以最大公因数；', '③ 通分：找最小公倍数作公分母；', '④ 同分母分数相加减，分母不变，分子相加减；', '⑤ 结果化为最简分数。'],
+          knowledge: '分数运算核心：先通分、再运算、最后化简。'
+        };
+      }
+      // 百分数/比例题
+      if (/百分|%|比例|比|几比几/.test(t)) {
+        return {
+          type: '📊 百分数/比例题',
+          steps: ['① 百分数化为小数：去掉百分号，小数点左移两位；', '② 比例题：根据内项积=外项积求解；', '③ 设未知数，列方程；', '④ 解方程得出结果。'],
+          knowledge: '百分数 ↔ 小数 ↔ 分数互化是基础，比例题利用内项积=外项积。'
+        };
+      }
+      // 几何/面积题
+      if (/面积|周长|体积|正方形|长方形|三角形|圆形|平行四边形/.test(t)) {
+        return {
+          type: '📐 几何计算题',
+          steps: ['① 识别图形类型；', '② 选用对应公式（正方形=边长²，长方形=长×宽，三角形=底×高÷2，圆=πr²）；', '③ 代入数值计算；', '④ 注意单位换算。'],
+          knowledge: '几何公式要记牢：S正=a²，S长=ab，S△=½ah，S圆=πr²，C圆=2πr。'
+        };
+      }
+      // 应用题：行程问题
+      if (/速度|时间|路程|相遇|追及|行程/.test(t)) {
+        return {
+          type: '🚗 行程问题',
+          steps: ['① 公式：路程=速度×时间；', '② 相遇问题：总路程÷速度和=相遇时间；', '③ 追及问题：路程差÷速度差=追及时间；', '④ 画线段图帮助理解。'],
+          knowledge: '行程三要素：路程=速度×时间。画线段图是关键方法。'
+        };
+      }
       // 方程题：含 x 和 = 或"方程"等关键词
       if ((/求x|方程|解方程/i.test(t) || t.includes('=')) && /x/i.test(t)) {
         const sol = this.solveLinear(t);
@@ -1382,16 +1321,37 @@ const Tools = {
     }
 
     if (subject === 'chinese') {
+      // 文言文题
+      if (/文言文|古文|之乎者也|翻译下列|解释词语/.test(t)) {
+        return {
+          type: '📜 文言文题',
+          steps: ['① 通读原文，理解大意；', '② 解释重点词语（之、乎、者、也、以、为等虚词）；', '③ 翻译句子：保留实词，调整语序，补出省略；', '④ 理解文章主旨和作者情感。'],
+          knowledge: '文言文翻译三原则：信（准确）、达（通顺）、雅（优美）。'
+        };
+      }
+      // 病句修改
+      if (/病句|修改|语病|有错/.test(t)) {
+        return {
+          type: '✏️ 病句修改题',
+          steps: ['① 检查主语是否残缺；', '② 检查搭配是否恰当（动宾、主谓）；', '③ 检查语序是否合理；', '④ 检查是否有歧义或重复；', '⑤ 修改后读一遍，确保通顺。'],
+          knowledge: '常见病句类型：搭配不当、成分残缺、语序不当、重复啰嗦、句式杂糅。'
+        };
+      }
+      // 作文指导
+      if (/作文|写作|写一篇|以.*为题|话题作文/.test(t)) {
+        return {
+          type: '✍️ 作文指导',
+          steps: ['① 审题：明确题目要求、文体、字数；', '② 立意：确定中心思想；', '③ 选材：选择典型事例和细节；', '④ 结构：开头→中间（段落清晰）→结尾；', '⑤ 语言：多用修辞手法，注意过渡。'],
+          knowledge: '好作文要素：审题准、立意深、选材新、结构清、语言美。'
+        };
+      }
       // 修辞手法
       if (/比喻|拟人|夸张|排比|修辞/.test(t)) {
-        const steps = [
-          '① 比喻：用"像/仿佛/犹如"把一物比作另一物（本体+喻体+比喻词）；',
-          '② 拟人：把物当作人来写，赋予人的动作或情感；',
-          '③ 夸张：故意放大或缩小事物的特征；',
-          '④ 排比：三个或以上结构相似的句子连用；',
-          '⑤ 判断时先找标志词，再分析表达效果。'
-        ];
-        return { type: '✍️ 修辞手法题', steps, knowledge: '判断修辞手法：找标志词→分析手法→体会表达效果（生动形象/突出特点/抒发情感）。' };
+        return {
+          type: '🎭 修辞手法题',
+          steps: ['① 比喻：用"像/仿佛/犹如"把一物比作另一物（本体+喻体+比喻词）；', '② 拟人：把物当作人来写，赋予人的动作或情感；', '③ 夸张：故意放大或缩小事物的特征；', '④ 排比：三个或以上结构相似的句子连用；', '⑤ 判断时先找标志词，再分析表达效果。'],
+          knowledge: '判断修辞手法：找标志词→分析手法→体会表达效果（生动形象/突出特点/抒发情感）。'
+        };
       }
       // 字音题
       if (/拼音|读音|注音|声调/.test(t)) {
@@ -1401,6 +1361,14 @@ const Tools = {
           knowledge: '字音题要结合词语语境判断，多音字据义定音。'
         };
       }
+      // 词语运用
+      if (/选词|填空|词语运用|成语使用/.test(t)) {
+        return {
+          type: '📝 词语运用题',
+          steps: ['① 理解每个词语/成语的意思；', '② 放在具体语境中看是否合适；', '③ 注意词义的轻重、褒贬色彩；', '④ 注意搭配习惯和使用对象。'],
+          knowledge: '成语使用注意：望文生义、用错对象、褒贬误用、重复啰嗦。'
+        };
+      }
       // 古诗名句
       const poems = [
         { kw: '床前明月光', author: '李白', source: '《静夜思》' },
@@ -1408,13 +1376,17 @@ const Tools = {
         { kw: '锄禾日当午', author: '李绅', source: '《悯农》' },
         { kw: '白日依山尽', author: '王之涣', source: '《登鹳雀楼》' },
         { kw: '两个黄鹂鸣翠柳', author: '杜甫', source: '《绝句》' },
-        { kw: '离离原上草', author: '白居易', source: '《赋得古原草送别》' }
+        { kw: '离离原上草', author: '白居易', source: '《赋得古原草送别》' },
+        { kw: '举头望明月', author: '李白', source: '《静夜思》' },
+        { kw: '红豆生南国', author: '王维', source: '《相思》' },
+        { kw: '野火烧不尽', author: '白居易', source: '《赋得古原草送别》' },
+        { kw: '春风又绿', author: '王安石', source: '《泊船瓜洲》' }
       ];
       for (const p of poems) {
         if (t.includes(p.kw)) {
           return {
             type: '📜 古诗名句题',
-            steps: [`① 该名句出自${p.author}的${p.source}；`, '② 结合全诗理解句意；', '③ 体会诗人表达的情感。'],
+            steps: [`① 该名句出自${p.author}的${p.source}；`, '② 结合全诗理解句意；', '③ 体会诗人表达的情感；', '④ 注意手法和用词特点。'],
             knowledge: `名句"${p.kw}"出自${p.author}《${p.source}》。`
           };
         }
@@ -1428,6 +1400,30 @@ const Tools = {
     }
 
     if (subject === 'english') {
+      // 完形填空
+      if (/完形|填空|cloze/i.test(t)) {
+        return {
+          type: '📝 完形填空',
+          steps: ['① 通读全文，理解大意；', '② 根据上下文语境判断逻辑关系；', '③ 注意固定搭配和语法结构；', '④ 注意时态和主谓一致；', '⑤ 复读全文检查。'],
+          knowledge: '完形填空：语境>语法>词汇，先懂大意再填空。'
+        };
+      }
+      // 阅读理解
+      if (/阅读|理解|read|passage/i.test(t)) {
+        return {
+          type: '📖 英语阅读理解',
+          steps: ['① 先读问题，带着问题找答案；', '② 扫读文章，划出关键词；', '③ 精读相关段落，分析选项；', '④ 注意同义替换和推理判断。'],
+          knowledge: '阅读理解技巧：先题后文→定位关键词→同义替换→排除干扰。'
+        };
+      }
+      // 写作
+      if (/写作|作文|write|composition/i.test(t)) {
+        return {
+          type: '✍️ 英语写作',
+          steps: ['① 审题：明确主题、文体、时态；', '② 列提纲：开头→论点→结尾；', '③ 写句子：注意句式多样性；', '④ 检查：语法、拼写、时态。'],
+          knowledge: '好作文结构：总-分-总，多用复合句和连接词。'
+        };
+      }
       // 翻译题
       if (/翻译|译成|translate/i.test(t)) {
         return {
@@ -1442,6 +1438,14 @@ const Tools = {
           type: '⏰ 时态题',
           steps: ['① 找时间状语判断时态；', '② 一般现在时：often/usually + 动词原形/三单；', '③ 现在进行时：now/look + be+doing；', '④ 一般过去时：yesterday + 动词过去式；', '⑤ 一般将来时：tomorrow + will+动词原形。'],
           knowledge: '时态由"时间状语+动词形式"共同决定，先看时间再定动词。'
+        };
+      }
+      // 选择题/语法
+      if (/选择|语法|choice|grammar/i.test(t)) {
+        return {
+          type: '✅ 选择题/语法题',
+          steps: ['① 读懂题干，划出关键词；', '② 分析语法结构（主谓宾/时态/句型）；', '③ 排除明显错误选项；', '④ 代入选项验证；', '⑤ 选择最佳答案。'],
+          knowledge: '语法题常见考点：时态、被动语态、虚拟语气、定语从句、非谓语动词。'
         };
       }
       return {
@@ -1548,68 +1552,161 @@ const Tools = {
     });
   },
 
+  // 本地批改作业引擎（永久免费）
+  _correctHomework(question, userAnswer, subject) {
+    const q = question.trim();
+    const a = userAnswer.trim();
+    const errors = [];
+    const suggestions = [];
+    let score = 100;
+
+    // 数学批改
+    if (subject === 'math') {
+      // 检测答案是否为数字
+      const numMatch = a.match(/(-?\d+\.?\d*)/);
+      if (!numMatch) {
+        errors.push('答案看起来不是一个数字，请检查');
+        score -= 30;
+      }
+
+      // 方程题尝试自动求解
+      if (/x|方程/i.test(q) && /=/.test(q)) {
+        const sol = this.solveLinear(q);
+        if (sol !== null && isFinite(sol) && numMatch) {
+          const userNum = parseFloat(numMatch[1]);
+          if (Math.abs(userNum - sol) < 0.01) {
+            return {
+              type: '✅ 批改结果 - 完全正确',
+              steps: ['你的答案完全正确！', `方程的解为 x = ${Math.round(sol * 1000) / 1000}`, '继续保持！'],
+              knowledge: '解方程要注意移项变号、合并同类项。'
+            };
+          } else {
+            errors.push(`正确答案是 x = ${Math.round(sol * 1000) / 1000}，你的答案 ${userNum} 有误`);
+            score -= 40;
+            suggestions.push('检查移项时是否变号，计算过程是否正确');
+          }
+        }
+      }
+
+      // 算式题尝试计算
+      if (/^[0-9+\-*/.()%\s×÷]+$/.test(q)) {
+        try {
+          const safe = q.replace(/×/g, '*').replace(/÷/g, '/');
+          const correctAns = eval(safe);
+          if (numMatch) {
+            const userNum = parseFloat(numMatch[1]);
+            if (Math.abs(userNum - correctAns) < 0.01) {
+              return {
+                type: '✅ 批改结果 - 完全正确',
+                steps: ['计算正确！', `正确结果是 ${Math.round(correctAns * 1000) / 1000}`, '继续保持！'],
+                knowledge: '四则运算注意运算顺序。'
+              };
+            } else {
+              errors.push(`正确答案是 ${Math.round(correctAns * 1000) / 1000}，你的答案 ${userNum} 有误`);
+              score -= 40;
+              suggestions.push('注意运算顺序：先括号、再乘除、最后加减');
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 答案太短或太简单
+      if (a.length < 1) {
+        errors.push('答案太短，请写出完整的解题过程');
+        score -= 50;
+      }
+    }
+
+    // 语文批改
+    if (subject === 'chinese') {
+      if (a.length < 2) {
+        errors.push('回答太短，请详细阐述你的观点');
+        score -= 40;
+        suggestions.push('尽量多写一些，可以从不同角度分析');
+      }
+      // 检测常见错误
+      if (/应该|因为|所以|但是/.test(q) && !/应该|因为|所以|但是/.test(a)) {
+        suggestions.push('建议使用"因为...所以..."等关联词使逻辑更清晰');
+      }
+    }
+
+    // 英语批改
+    if (subject === 'english') {
+      if (a.length < 2) {
+        errors.push('回答太短');
+        score -= 30;
+      }
+      // 检测时态
+      if (/yesterday|last|ago/.test(q) && !/ed|was|did/.test(a)) {
+        suggestions.push('题目涉及过去时间，注意使用一般过去时');
+      }
+      if (/now|look|listen/.test(q) && !/ing|am|is|are/.test(a)) {
+        suggestions.push('题目涉及进行时态，注意使用 be+doing 结构');
+      }
+    }
+
+    if (errors.length === 0) {
+      return {
+        type: `✅ 批改结果 - 得分 ${score} 分`,
+        steps: ['回答基本正确', '答案格式规范', '继续保持，争取更好！'],
+        knowledge: '你掌握得不错，继续努力！'
+      };
+    }
+
+    return {
+      type: `📝 批改结果 - 得分 ${score} 分`,
+      steps: [
+        `📋 发现 ${errors.length} 个问题：`,
+        ...errors.map((e, i) => `  ${i + 1}. ${e}`),
+        suggestions.length > 0 ? `💡 修改建议：` : '',
+        ...suggestions.map((s, i) => `  ${i + 1}. ${s}`),
+        `📌 总体评价：${score >= 80 ? '回答不错，再接再厉！' : score >= 60 ? '还需要继续努力，仔细检查错误。' : '需要加强练习，掌握相关知识点。'}`
+      ].filter(Boolean),
+      knowledge: '仔细检查每一步的答案，养成检查的好习惯。'
+    };
+  },
+
   /* ---------- 语文词典 ---------- */
-  // 小学常见字词词库（4-6年级）
-  _dictData: {
-    '美丽': { pinyin: 'měi lì', meaning: '好看的样子，让人赏心悦目。', words: ['美丽动人', '绚丽美丽'], sentence: '春天的花园美丽极了。' },
-    '勇敢': { pinyin: 'yǒng gǎn', meaning: '有勇气，不怕危险和困难。', words: ['勇敢无畏', '英勇勇敢'], sentence: '他勇敢地面对困难。' },
-    '智慧': { pinyin: 'zhì huì', meaning: '辨析判断、发明创造的能力。', words: ['智慧无穷', '足智多谋'], sentence: '老人的智慧令人敬佩。' },
-    '坚持': { pinyin: 'jiān chí', meaning: '坚决保持、进行下去。', words: ['坚持不懈', '坚持到底'], sentence: '只要坚持就能成功。' },
-    '芬芳': { pinyin: 'fēn fāng', meaning: '香，香气。', words: ['芬芳扑鼻', '芬芳迷人'], sentence: '玫瑰散发着芬芳的香气。' },
-    '茂盛': { pinyin: 'mào shèng', meaning: '植物生长得多而茁壮。', words: ['枝叶茂盛', '茂盛繁密'], sentence: '这棵大树枝叶茂盛。' },
-    '忽然': { pinyin: 'hū rán', meaning: '表示来得迅速而又出乎意料。', words: ['忽然下雪', '忽然明白'], sentence: '忽然下起了大雨。' },
-    '观察': { pinyin: 'guān chá', meaning: '仔细察看客观事物或现象。', words: ['仔细观察', '观察入微'], sentence: '他喜欢观察小动物。' },
-    '鼓励': { pinyin: 'gǔ lì', meaning: '激发，勉励。', words: ['鼓励进步', '鼓励支持'], sentence: '老师的鼓励让我充满信心。' },
-    '骄傲': { pinyin: 'jiāo ào', meaning: '自以为了不起；也指值得自豪的人或事物。', words: ['骄傲自满', '引以为傲'], sentence: '我为祖国的成就感到骄傲。' },
-    '谦虚': { pinyin: 'qiān xū', meaning: '虚心，不自满。', words: ['谦虚谨慎', '谦虚好学'], sentence: '他成绩优秀却很谦虚。' },
-    '珍惜': { pinyin: 'zhēn xī', meaning: '珍重爱惜。', words: ['珍惜时间', '珍惜友谊'], sentence: '我们要珍惜美好的时光。' },
-    '梦想': { pinyin: 'mèng xiǎng', meaning: '幻想，理想。', words: ['追逐梦想', '实现梦想'], sentence: '他为梦想不断努力。' },
-    '希望': { pinyin: 'xī wàng', meaning: '心里想着实现某种事情。', words: ['满怀希望', '希望工程'], sentence: '我希望明天是个晴天。' },
-    '灿烂': { pinyin: 'càn làn', meaning: '光彩鲜明夺目。', words: ['阳光灿烂', '灿烂夺目'], sentence: '灿烂的阳光洒满大地。' },
-    '宁静': { pinyin: 'níng jìng', meaning: '安静，平静。', words: ['宁静致远', '宁静祥和'], sentence: '夜晚的湖面十分宁静。' },
-    '辽阔': { pinyin: 'liáo kuò', meaning: '宽广，空旷。', words: ['辽阔无垠', '辽阔草原'], sentence: '辽阔的草原一望无边。' },
-    '蜿蜒': { pinyin: 'wān yán', meaning: '弯弯曲曲地延伸。', words: ['蜿蜒曲折', '蜿蜒盘旋'], sentence: '长城蜿蜒在群山之间。' },
-    '巍峨': { pinyin: 'wēi é', meaning: '形容山或建筑物高大雄伟。', words: ['巍峨挺拔', '巍峨耸立'], sentence: '巍峨的高山直插云霄。' },
-    '晶莹': { pinyin: 'jīng yíng', meaning: '光亮而透明。', words: ['晶莹剔透', '晶莹夺目'], sentence: '露珠在阳光下晶莹闪亮。' },
-    '勤奋': { pinyin: 'qín fèn', meaning: '不懈怠，努力干好一件事。', words: ['勤奋好学', '勤奋刻苦'], sentence: '他学习非常勤奋。' },
-    '诚实': { pinyin: 'chéng shí', meaning: '言行跟内心一致，不虚假。', words: ['诚实守信', '诚实可靠'], sentence: '做个诚实的孩子。' },
-    '善良': { pinyin: 'shàn liáng', meaning: '心地纯洁，没有恶意。', words: ['善良淳朴', '善良可爱'], sentence: '她是个善良的姑娘。' },
-    '友谊': { pinyin: 'yǒu yì', meaning: '朋友间的交情。', words: ['深厚友谊', '友谊长存'], sentence: '我们的友谊地久天长。' },
-    '快乐': { pinyin: 'kuài lè', meaning: '感到幸福或满意。', words: ['快乐无比', '快乐成长'], sentence: '祝大家新年快乐。' },
-    '温暖': { pinyin: 'wēn nuǎn', meaning: '暖和；使感到亲切关怀。', words: ['温暖如春', '温暖人心'], sentence: '阳光温暖着大地。' },
-    '茁壮': { pinyin: 'zhuó zhuàng', meaning: '形容生长旺盛的样子。', words: ['茁壮成长', '茁壮挺拔'], sentence: '小树苗在阳光下茁壮成长。' },
-    '慈祥': { pinyin: 'cí xiáng', meaning: '仁慈和蔼。', words: ['慈祥可爱', '慈祥微笑'], sentence: '奶奶露出慈祥的笑容。' },
-    '璀璨': { pinyin: 'cuǐ càn', meaning: '形容珠玉等光彩鲜明。', words: ['璀璨夺目', '璀璨星空'], sentence: '璀璨的星空美丽极了。' },
-    '静谧': { pinyin: 'jìng mì', meaning: '安静。', words: ['静谧祥和', '静谧无声'], sentence: '山林里一片静谧。' },
-    '辽远': { pinyin: 'liáo yuǎn', meaning: '遥远。', words: ['辽远天空', '辽远无边'], sentence: '辽远的天边飘着白云。' },
-    '清澈': { pinyin: 'qīng chè', meaning: '清而透明。', words: ['清澈见底', '清澈明亮'], sentence: '湖水清澈见底。' }
+  // 使用外部 DICTIONARY_DATA（dictionary_data.js），含 2000 词语 + 1000 成语
+  _getDictData() {
+    if (typeof DICTIONARY_DATA === 'undefined') return { words: [], idioms: [] };
+    return DICTIONARY_DATA;
   },
 
   renderDictionary(container) {
     const history = this._loadHistory('study_dict_history');
-    const allWords = Object.keys(this._dictData);
+    const dict = this._getDictData();
+    const totalWords = dict.words.length;
+    const totalIdioms = dict.idioms.length;
     const html = `
       <div class="page-header">
         <div>
           <button class="btn-secondary" id="dictBack">◀ 返回工具箱</button>
           <div class="page-title" style="margin-top:10px;">📕 语文词典</div>
-          <div class="page-subtitle">查汉字拼音、释义、组词、例句</div>
+          <div class="page-subtitle">收录 ${totalWords} 个词语 + ${totalIdioms} 个成语，查拼音、释义、组词、造句</div>
         </div>
       </div>
       <div class="glass-card" style="padding:20px;">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <input type="text" id="dictInput" placeholder="输入汉字或词语，如 美丽 或 美" style="flex:1;min-width:160px;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;outline:none;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <input type="text" id="dictInput" placeholder="输入词语或成语，如 美丽、画蛇添足、勇敢" style="flex:1;min-width:160px;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;outline:none;">
+          <select id="dictType" style="padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;outline:none;">
+            <option value="all">全部</option>
+            <option value="word">词语</option>
+            <option value="idiom">成语</option>
+            <option value="poem">古诗词</option>
+            <option value="classic">文言文</option>
+          </select>
           <button class="btn-primary" id="dictQuery">🔍 查询</button>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-muted);align-self:center;">热门：</span>
+          ${['美丽','勇敢','勤奋','画蛇添足','守株待兔','精益求精','春暖花开','一丝不苟'].map(w => `<span class="clickable" data-hotword="${w}" style="padding:4px 10px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">${w}</span>`).join('')}
         </div>
       </div>
       <div id="dictResult" style="margin-top:16px;"></div>
       <div class="glass-card" style="padding:16px;margin-top:16px;">
         <div style="font-weight:600;margin-bottom:8px;">📜 查询历史</div>
         <div id="dictHistory"></div>
-      </div>
-      <div class="glass-card" style="padding:16px;margin-top:16px;">
-        <div style="font-weight:600;margin-bottom:8px;">📚 词库收录（${allWords.length} 词）</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">${allWords.map(w => `<span class="clickable" data-word="${w}" style="padding:4px 10px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">${w}</span>`).join('')}</div>
       </div>
     `;
     container.innerHTML = html;
@@ -1619,50 +1716,140 @@ const Tools = {
       const doQuery = () => {
         const q = container.querySelector('#dictInput').value.trim();
         if (!q) { UI.showToast('请输入要查询的字或词'); return; }
-        this._dictQuery(container, q);
+        const type = container.querySelector('#dictType').value;
+        this._dictQuery(container, q, type);
       };
       container.querySelector('#dictQuery').addEventListener('click', doQuery);
       container.querySelector('#dictInput').addEventListener('keydown', e => { if (e.key === 'Enter') doQuery(); });
-      container.querySelectorAll('[data-word]').forEach(el => {
+      container.querySelectorAll('[data-hotword]').forEach(el => {
         el.addEventListener('click', () => {
-          container.querySelector('#dictInput').value = el.dataset.word;
-          this._dictQuery(container, el.dataset.word);
+          container.querySelector('#dictInput').value = el.dataset.hotword;
+          doQuery();
         });
       });
     }, 0);
   },
 
-  _dictQuery(container, q) {
-    const data = this._dictData;
-    let matches = [];
-    // 精确匹配优先
-    if (data[q]) {
-      matches.push({ word: q, ...data[q] });
-    } else {
-      // 单字/部分匹配：返回含该字的所有词条
-      Object.keys(data).forEach(w => {
-        if (w.includes(q)) matches.push({ word: w, ...data[w] });
+  _dictQuery(container, q, type = 'all') {
+    const dict = this._getDictData();
+    const classics = typeof CLASSICS_DATA === 'undefined' ? { poems: [], classics: [] } : CLASSICS_DATA;
+    let wordMatches = [];
+    let idiomMatches = [];
+    let poemMatches = [];
+    let classicMatches = [];
+
+    // 搜索词语
+    if (type === 'all' || type === 'word') {
+      dict.words.forEach(w => {
+        if (w.word === q || w.word.includes(q) || (w.meaning && w.meaning.includes(q))) {
+          wordMatches.push(w);
+        }
       });
     }
+    // 搜索成语
+    if (type === 'all' || type === 'idiom') {
+      dict.idioms.forEach(w => {
+        if (w.word === q || w.word.includes(q) || (w.meaning && w.meaning.includes(q))) {
+          idiomMatches.push(w);
+        }
+      });
+    }
+    // 搜索古诗词
+    if (type === 'all' || type === 'poem') {
+      classics.poems.forEach(p => {
+        if (p.title.includes(q) || p.author.includes(q) || (p.content && p.content.includes(q)) || (p.translation && p.translation.includes(q))) {
+          poemMatches.push(p);
+        }
+      });
+    }
+    // 搜索文言文
+    if (type === 'all' || type === 'classic') {
+      classics.classics.forEach(c => {
+        if (c.title.includes(q) || c.source.includes(q) || (c.original && c.original.includes(q)) || (c.translation && c.translation.includes(q))) {
+          classicMatches.push(c);
+        }
+      });
+    }
+
     const el = container.querySelector('#dictResult');
-    if (matches.length === 0) {
+    if (wordMatches.length === 0 && idiomMatches.length === 0 && poemMatches.length === 0 && classicMatches.length === 0) {
       el.innerHTML = `
         <div class="glass-card" style="padding:20px;text-align:center;color:var(--text-muted);">
-          词库暂未收录该词，可尝试其他词语。
-          <div style="margin-top:10px;font-size:13px;text-align:left;">可用词语：${Object.keys(data).join('、')}</div>
+          <div style="font-size:16px;margin-bottom:6px;">未找到「${this._escape(q)}」</div>
+          <div style="font-size:13px;">词库收录了 ${dict.words.length} 个词语、${dict.idioms.length} 个成语、${classics.poems.length} 首古诗词、${classics.classics.length} 篇文言文</div>
+          <div style="margin-top:10px;"><button class="btn-primary" id="goKnowledge" style="font-size:13px;">🔍 去知识搜索试试</button></div>
         </div>
       `;
+      el.querySelector('#goKnowledge')?.addEventListener('click', () => {
+        this.openToolPanel('knowledge');
+        setTimeout(() => {
+          const inp = document.querySelector('#knowledgeInput');
+          if (inp) { inp.value = q; document.querySelector('#knowledgeQuery')?.click(); }
+        }, 100);
+      });
       return;
     }
-    el.innerHTML = matches.map(m => `
-      <div class="glass-card" style="padding:18px;margin-bottom:12px;">
-        <div style="font-size:20px;font-weight:700;color:var(--accent-dark);">${this._escape(m.word)} <span style="font-size:14px;color:var(--text-muted);font-weight:normal;">${this._escape(m.pinyin)}</span></div>
-        <div style="margin-top:8px;"><span style="color:var(--text-muted);">释义：</span>${this._escape(m.meaning)}</div>
-        <div style="margin-top:6px;"><span style="color:var(--text-muted);">组词：</span>${m.words.map(w => this._escape(w)).join('、')}</div>
-        <div style="margin-top:6px;"><span style="color:var(--text-muted);">例句：</span>${this._escape(m.sentence)}</div>
-      </div>
-    `).join('');
-    // 存历史，最多20条，已存在则移到最前
+
+    let html = '';
+    // 词语结果
+    if (wordMatches.length > 0) {
+      html += `<div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:8px;color:var(--accent-dark);">📖 词语（${wordMatches.length} 条结果）</div>`;
+      html += wordMatches.slice(0, 30).map(m => `
+        <div class="glass-card" style="padding:18px;margin-bottom:12px;">
+          <div style="font-size:20px;font-weight:700;color:var(--accent-dark);">${this._escape(m.word)} <span style="font-size:14px;color:var(--text-muted);font-weight:normal;">${this._escape(m.pinyin || '')}</span></div>
+          <div style="margin-top:8px;"><span style="color:var(--text-muted);">释义：</span>${this._escape(m.meaning)}</div>
+          ${m.words && m.words.length ? `<div style="margin-top:6px;"><span style="color:var(--text-muted);">组词：</span>${m.words.map(w => this._escape(w)).join('、')}</div>` : ''}
+          <div style="margin-top:6px;"><span style="color:var(--text-muted);">例句：</span>${this._escape(m.sentence)}</div>
+        </div>
+      `).join('');
+      if (wordMatches.length > 30) html += `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:8px;">还有 ${wordMatches.length - 30} 条结果未显示</div>`;
+      html += '</div>';
+    }
+    // 成语结果
+    if (idiomMatches.length > 0) {
+      html += `<div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:8px;color:var(--accent-dark);">🏮 成语（${idiomMatches.length} 条结果）</div>`;
+      html += idiomMatches.slice(0, 30).map(m => `
+        <div class="glass-card" style="padding:18px;margin-bottom:12px;">
+          <div style="font-size:20px;font-weight:700;color:var(--accent-dark);">${this._escape(m.word)} <span style="font-size:14px;color:var(--text-muted);font-weight:normal;">${this._escape(m.pinyin || '')}</span></div>
+          <div style="margin-top:8px;"><span style="color:var(--text-muted);">释义：</span>${this._escape(m.meaning)}</div>
+          ${m.source ? `<div style="margin-top:6px;"><span style="color:var(--text-muted);">出处：</span>${this._escape(m.source)}</div>` : ''}
+          <div style="margin-top:6px;"><span style="color:var(--text-muted);">造句：</span>${this._escape(m.sentence)}</div>
+        </div>
+      `).join('');
+      if (idiomMatches.length > 30) html += `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:8px;">还有 ${idiomMatches.length - 30} 条结果未显示</div>`;
+      html += '</div>';
+    }
+    // 古诗词结果
+    if (poemMatches.length > 0) {
+      html += `<div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:8px;color:var(--accent-dark);">🏮 古诗词（${poemMatches.length} 条结果）</div>`;
+      html += poemMatches.slice(0, 20).map(m => `
+        <div class="glass-card" style="padding:18px;margin-bottom:12px;">
+          <div style="font-size:18px;font-weight:700;color:var(--accent-dark);">${this._escape(m.title)} <span style="font-size:14px;color:var(--text-muted);font-weight:normal;">${this._escape(m.author)}（${this._escape(m.dynasty)}）</span></div>
+          <div style="margin-top:8px;font-size:16px;line-height:2;color:var(--text-primary);">${this._escape(m.content)}</div>
+          <div style="margin-top:8px;"><span style="color:var(--text-muted);">译文：</span>${this._escape(m.translation)}</div>
+          ${m.appreciation ? `<div style="margin-top:6px;"><span style="color:var(--text-muted);">赏析：</span>${this._escape(m.appreciation)}</div>` : ''}
+        </div>
+      `).join('');
+      if (poemMatches.length > 20) html += `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:8px;">还有 ${poemMatches.length - 20} 条结果未显示</div>`;
+      html += '</div>';
+    }
+    // 文言文结果
+    if (classicMatches.length > 0) {
+      html += `<div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:8px;color:var(--accent-dark);">📜 文言文（${classicMatches.length} 条结果）</div>`;
+      html += classicMatches.slice(0, 20).map(m => `
+        <div class="glass-card" style="padding:18px;margin-bottom:12px;">
+          <div style="font-size:18px;font-weight:700;color:var(--accent-dark);">${this._escape(m.title)} <span style="font-size:14px;color:var(--text-muted);font-weight:normal;">${this._escape(m.source)}</span></div>
+          <div style="margin-top:8px;font-size:15px;line-height:1.9;color:var(--text-primary);">${this._escape(m.original)}</div>
+          <div style="margin-top:8px;"><span style="color:var(--text-muted);">译文：</span>${this._escape(m.translation)}</div>
+          ${m.notes ? `<div style="margin-top:6px;"><span style="color:var(--text-muted);">注释：</span>${this._escape(m.notes)}</div>` : ''}
+        </div>
+      `).join('');
+      if (classicMatches.length > 20) html += `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:8px;">还有 ${classicMatches.length - 20} 条结果未显示</div>`;
+      html += '</div>';
+    }
+    el.innerHTML = html;
+
+    // 存历史
     const hist = this._loadHistory('study_dict_history');
     const idx = hist.indexOf(q);
     if (idx >= 0) hist.splice(idx, 1);
@@ -1685,6 +1872,195 @@ const Tools = {
         if (w) {
           container.querySelector('#dictInput').value = w;
           this._dictQuery(container, w);
+        }
+      });
+    });
+  },
+
+  /* ---------- 知识搜索引擎 ---------- */
+  renderKnowledgeSearch(container) {
+    const history = this._loadHistory('study_knowledge_history');
+    const html = `
+      <div class="page-header">
+        <div>
+          <button class="btn-secondary" id="knowledgeBack">◀ 返回工具箱</button>
+          <div class="page-title" style="margin-top:10px;">🔍 知识搜索</div>
+          <div class="page-subtitle">全面搜索引擎：成语故事、十万个为什么、百科、古诗词、文言文、生活常识、安全、礼仪、节日</div>
+        </div>
+      </div>
+      <div class="glass-card" style="padding:20px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <input type="text" id="knowledgeInput" placeholder="搜索成语、为什么、百科知识..." style="flex:1;min-width:160px;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;outline:none;">
+          <button class="btn-primary" id="knowledgeQuery">🔍 搜索</button>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="clickable" data-kbtn="成语故事" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">📖 成语故事</span>
+          <span class="clickable" data-kbtn="十万个为什么" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">❓ 十万个为什么</span>
+          <span class="clickable" data-kbtn="百科知识" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">📚 百科知识</span>
+          <span class="clickable" data-kbtn="古诗词" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">🏮 古诗词</span>
+          <span class="clickable" data-kbtn="文言文" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">📜 文言文</span>
+          <span class="clickable" data-kbtn="生活常识" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">🏠 生活常识</span>
+          <span class="clickable" data-kbtn="安全常识" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">🛡️ 安全常识</span>
+          <span class="clickable" data-kbtn="节日习俗" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">🎉 节日习俗</span>
+          <span class="clickable" data-kbtn="礼仪" style="padding:6px 12px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">🙇 礼仪</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-muted);align-self:center;">热门搜索：</span>
+          ${['静夜思','为什么天是蓝色的','春节','画蛇添足','安全','论语','为什么鱼不会淹死','卧薪尝胆'].map(w => `<span class="clickable" data-khot="${w}" style="padding:4px 10px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;">${w}</span>`).join('')}
+        </div>
+      </div>
+      <div id="knowledgeResult" style="margin-top:16px;"></div>
+      <div class="glass-card" style="padding:16px;margin-top:16px;">
+        <div style="font-weight:600;margin-bottom:8px;">📜 搜索历史</div>
+        <div id="knowledgeHistory"></div>
+      </div>
+    `;
+    container.innerHTML = html;
+    this._renderKnowledgeHistory(container, history);
+    setTimeout(() => {
+      container.querySelector('#knowledgeBack').addEventListener('click', () => UI.navigate('tools'));
+      const doQuery = (q) => {
+        if (!q) {
+          q = container.querySelector('#knowledgeInput').value.trim();
+        }
+        if (!q) { UI.showToast('请输入搜索内容'); return; }
+        this._knowledgeQuery(container, q);
+      };
+      container.querySelector('#knowledgeQuery').addEventListener('click', () => doQuery());
+      container.querySelector('#knowledgeInput').addEventListener('keydown', e => { if (e.key === 'Enter') doQuery(); });
+      container.querySelectorAll('[data-kbtn]').forEach(el => {
+        el.addEventListener('click', () => {
+          container.querySelector('#knowledgeInput').value = el.dataset.kbtn;
+          doQuery(el.dataset.kbtn);
+        });
+      });
+      container.querySelectorAll('[data-khot]').forEach(el => {
+        el.addEventListener('click', () => {
+          container.querySelector('#knowledgeInput').value = el.dataset.khot;
+          doQuery(el.dataset.khot);
+        });
+      });
+    }, 0);
+  },
+
+  _knowledgeQuery(container, q) {
+    const data = typeof KNOWLEDGE_DATA === 'undefined' ? { idiomStories: [], whyQuestions: [], encyclopedia: [] } : KNOWLEDGE_DATA;
+    const classics = typeof CLASSICS_DATA === 'undefined' ? { poems: [], classics: [] } : CLASSICS_DATA;
+    const life = typeof LIFE_DATA === 'undefined' ? { lifeTips: [], safety: [], etiquette: [], festivals: [], practical: [] } : LIFE_DATA;
+    let results = [];
+
+    // 搜索成语故事
+    data.idiomStories.forEach(s => {
+      if (s.title.includes(q) || s.idiom.includes(q) || (s.story && s.story.includes(q)) || (s.meaning && s.meaning.includes(q))) {
+        results.push({ type: '📖 成语故事', title: s.title, content: s.story, extra: s.meaning, tag: s.idiom });
+      }
+    });
+    // 搜索十万个为什么
+    data.whyQuestions.forEach(w => {
+      if (w.question.includes(q) || (w.answer && w.answer.includes(q)) || (w.category && w.category.includes(q))) {
+        results.push({ type: '❓ 十万个为什么', title: w.question, content: w.answer, extra: '', tag: w.category });
+      }
+    });
+    // 搜索百科知识
+    data.encyclopedia.forEach(e => {
+      if (e.title.includes(q) || (e.content && e.content.includes(q)) || (e.category && e.category.includes(q))) {
+        results.push({ type: '📚 百科知识', title: e.title, content: e.content, extra: '', tag: e.category });
+      }
+    });
+    // 搜索古诗词
+    classics.poems.forEach(p => {
+      if (p.title.includes(q) || p.author.includes(q) || (p.content && p.content.includes(q)) || (p.translation && p.translation.includes(q)) || (p.category && p.category.includes(q))) {
+        results.push({ type: '🏮 古诗词', title: `${p.title} · ${p.author}（${p.dynasty}）`, content: p.content, extra: p.translation, tag: p.category });
+      }
+    });
+    // 搜索文言文
+    classics.classics.forEach(c => {
+      if (c.title.includes(q) || c.source.includes(q) || (c.original && c.original.includes(q)) || (c.translation && c.translation.includes(q)) || (c.category && c.category.includes(q))) {
+        results.push({ type: '📜 文言文', title: `${c.title} · ${c.source}`, content: c.original, extra: c.translation, tag: c.category });
+      }
+    });
+    // 搜索生活常识
+    life.lifeTips.forEach(l => {
+      if (l.title.includes(q) || (l.content && l.content.includes(q)) || (l.category && l.category.includes(q))) {
+        results.push({ type: '🏠 生活常识', title: l.title, content: l.content, extra: '', tag: l.category });
+      }
+    });
+    // 搜索安全常识
+    life.safety.forEach(l => {
+      if (l.title.includes(q) || (l.content && l.content.includes(q)) || (l.category && l.category.includes(q))) {
+        results.push({ type: '🛡️ 安全常识', title: l.title, content: l.content, extra: '', tag: l.category });
+      }
+    });
+    // 搜索礼仪常识
+    life.etiquette.forEach(l => {
+      if (l.title.includes(q) || (l.content && l.content.includes(q)) || (l.category && l.category.includes(q))) {
+        results.push({ type: '🙇 礼仪常识', title: l.title, content: l.content, extra: '', tag: l.category });
+      }
+    });
+    // 搜索节日习俗
+    life.festivals.forEach(l => {
+      if (l.name.includes(q) || (l.origin && l.origin.includes(q)) || (l.customs && l.customs.includes(q)) || (l.food && l.food.includes(q))) {
+        results.push({ type: '🎉 节日习俗', title: l.name, content: `📅 ${l.date}\n📖 ${l.origin}\n🎊 ${l.customs}\n🍽️ ${l.food}`, extra: '', tag: l.date });
+      }
+    });
+    // 搜索实用知识
+    life.practical.forEach(l => {
+      if (l.title.includes(q) || (l.content && l.content.includes(q)) || (l.category && l.category.includes(q))) {
+        results.push({ type: '💡 实用知识', title: l.title, content: l.content, extra: '', tag: l.category });
+      }
+    });
+
+    const el = container.querySelector('#knowledgeResult');
+    if (results.length === 0) {
+      el.innerHTML = `
+        <div class="glass-card" style="padding:20px;text-align:center;color:var(--text-muted);">
+          <div style="font-size:16px;margin-bottom:6px;">未找到与「${this._escape(q)}」相关的内容</div>
+          <div style="font-size:13px;">试试搜索：古诗词、文言文、成语、十万个为什么、生活常识、安全、节日、礼仪等</div>
+        </div>
+      `;
+      return;
+    }
+
+    el.innerHTML = `
+      <div style="margin-bottom:8px;font-size:14px;color:var(--text-muted);">找到 ${results.length} 条结果</div>
+      ${results.slice(0, 50).map(r => `
+        <div class="glass-card" style="padding:18px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:13px;padding:2px 10px;border-radius:6px;background:var(--accent-soft);color:var(--accent-dark);font-weight:600;">${this._escape(r.type)}</span>
+            ${r.tag ? `<span style="font-size:12px;color:var(--text-muted);">#${this._escape(r.tag)}</span>` : ''}
+          </div>
+          <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:8px;">${this._escape(r.title)}</div>
+          <div style="font-size:14px;line-height:1.7;color:var(--text-secondary);">${this._escape(r.content)}</div>
+          ${r.extra ? `<div style="margin-top:8px;padding:8px 12px;background:var(--bg-secondary);border-radius:8px;font-size:13px;color:var(--text-muted);">💡 ${this._escape(r.extra)}</div>` : ''}
+        </div>
+      `).join('')}
+      ${results.length > 50 ? `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:8px;">还有 ${results.length - 50} 条结果未显示，请缩小搜索范围</div>` : ''}
+    `;
+
+    // 存历史
+    const hist = this._loadHistory('study_knowledge_history');
+    const idx = hist.indexOf(q);
+    if (idx >= 0) hist.splice(idx, 1);
+    hist.unshift(q);
+    this._saveHistory('study_knowledge_history', hist.slice(0, 20));
+    this._renderKnowledgeHistory(container, this._loadHistory('study_knowledge_history'));
+  },
+
+  _renderKnowledgeHistory(container, history) {
+    const el = container.querySelector('#knowledgeHistory');
+    if (!el) return;
+    if (!history || history.length === 0) {
+      el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">暂无历史记录</div>';
+      return;
+    }
+    el.innerHTML = history.map((w, i) => `<span class="clickable" data-khist="${i}" style="padding:4px 10px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:8px;font-size:13px;margin:0 6px 6px 0;display:inline-block;">${this._escape(w)}</span>`).join('');
+    el.querySelectorAll('[data-khist]').forEach(item => {
+      item.addEventListener('click', () => {
+        const idx = parseInt(item.dataset.khist);
+        const w = history[idx];
+        if (w) {
+          container.querySelector('#knowledgeInput').value = w;
+          this._knowledgeQuery(container, w);
         }
       });
     });

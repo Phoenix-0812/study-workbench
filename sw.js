@@ -1,5 +1,5 @@
 /* Service Worker - 离线缓存 + 自动更新支持 */
-const CACHE_NAME = 'study-workbench-v10'; // 版本号每次功能迭代时 +1，触发用户端更新提示
+const CACHE_NAME = 'study-workbench-v11'; // 版本号每次功能迭代时 +1，触发用户端更新提示
 const OFFLINE_URLS = [
   './',
   './index.html',
@@ -34,6 +34,10 @@ const OFFLINE_URLS = [
   './js/subjects.js?v=10',
   './js/papers.js?v=10',
   './js/textbooks.js?v=10',
+  './js/dictionary_data.js?v=10',
+  './js/knowledge_data.js?v=10',
+  './js/classics_data.js?v=10',
+  './js/life_data.js?v=10',
   './js/tools.js?v=10',
   './js/widget.js?v=10',
   './js/app.js?v=10'
