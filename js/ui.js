@@ -153,6 +153,34 @@ const UI = {
         this.navigate('home');
       }
     });
+
+    // 首页照片收藏：上传图片（贴图）
+    const homeImgUpload = document.getElementById('homeImgUpload');
+    if (homeImgUpload) homeImgUpload.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+      if (typeof Widget !== 'undefined' && Widget.handleUpload) {
+        Widget.handleUpload(files);
+      }
+    });
+
+    // 首页照片收藏：查看全部
+    const homeViewAllImg = document.getElementById('homeViewAllImg');
+    if (homeViewAllImg) homeViewAllImg.addEventListener('click', () => this.navigate('widget'));
+
+    // 首页图片缩略图点击：跳转到图片小组件
+    container.querySelectorAll('.home-img-thumb').forEach(thumb => {
+      thumb.addEventListener('click', () => this.navigate('widget'));
+    });
+
+    // 首页成就墙：查看完整成就
+    const homeViewAllAch = document.getElementById('homeViewAllAch');
+    if (homeViewAllAch) homeViewAllAch.addEventListener('click', () => this.navigate('achievements'));
+
+    // 首页成就项点击：跳转成就墙
+    container.querySelectorAll('.home-ach-item').forEach(item => {
+      item.addEventListener('click', () => this.navigate('achievements'));
+    });
   },
 
   // ========== 多端同步：同步码 ==========
@@ -381,6 +409,34 @@ const UI = {
     const todayCorrect = this.getTodayCorrect();
     const accuracy = todayCount > 0 ? Math.round(todayCorrect / todayCount * 100) : 0;
 
+    // 收藏图片 & 成就（首页直接展示）
+    const widgetImages = Storage.get(Storage.KEYS.WIDGET_IMAGES, []);
+    const unlockedAch = State.getAchievements();
+    const allAchievements = APP_DATA.achievements || [];
+    const unlockedCount = Object.keys(unlockedAch).length;
+
+    // 首页图片收藏预览（最多显示前4张，可点击查看全部）
+    const imagePreviewHtml = widgetImages.length > 0
+      ? widgetImages.slice(0, 4).map((src, i) => `
+          <div class="home-img-thumb" data-idx="${i}" style="position:relative;width:100%;padding-top:100%;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer;">
+            <img src="${src}" alt="收藏${i+1}" loading="lazy" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;">
+          </div>
+        `).join('')
+      : `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">
+          📷 还没有收藏照片<br>
+          <span style="font-size:12px;">点击下方按钮上传你的第一张照片</span>
+        </div>`;
+
+    // 首页成就墙预览（显示已解锁 + 前6个未解锁）
+    const unlockedList = allAchievements.filter(a => unlockedAch[a.id]);
+    const lockedList = allAchievements.filter(a => !unlockedAch[a.id]).slice(0, 6);
+    const achievementPreviewHtml = [...unlockedList, ...lockedList].slice(0, 8).map(a => `
+      <div class="home-ach-item ${unlockedAch[a.id] ? 'unlocked' : 'locked'}" title="${a.name}: ${a.desc}" style="display:flex;flex-direction:column;align-items:center;padding:10px 6px;border-radius:12px;background:${unlockedAch[a.id] ? 'linear-gradient(135deg,var(--pink-light),#fff)' : 'var(--bg-secondary)'};border:1px solid ${unlockedAch[a.id] ? 'var(--pink)' : 'var(--border-soft)'};cursor:pointer;transition:transform 0.2s;">
+        <div style="font-size:28px;filter:${unlockedAch[a.id] ? 'none' : 'grayscale(1) opacity(0.5)'};">${a.icon}</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text-primary);margin-top:4px;text-align:center;">${a.name}</div>
+      </div>
+    `).join('');
+
     return `
       <div class="page-header">
         <div>
@@ -436,6 +492,52 @@ const UI = {
         <div class="quick-action" data-action="checkin">
           <div class="quick-action-icon">📅</div>
           <div class="quick-action-label">今日打卡</div>
+        </div>
+      </div>
+
+      <!-- 📸 我的照片收藏（上移到首页显眼位置，直接展示照片）-->
+      <div class="home-section">
+        <div class="home-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>📸 我的照片收藏</span>
+          <span style="font-size:12px;color:var(--text-muted);font-weight:normal;">共 ${widgetImages.length} 张</span>
+        </div>
+        <div class="glass-card" style="padding:16px;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+            ${imagePreviewHtml}
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;" for="homeImgUpload">
+              📤 贴图/上传
+              <input type="file" id="homeImgUpload" accept="image/*" multiple style="position:absolute;opacity:0;width:0;height:0;">
+            </label>
+            <button class="btn-secondary" id="homeViewAllImg" style="padding:8px 16px;font-size:13px;">🖼️ 查看全部</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🏆 我的成就墙（上移到首页，直接展示奖杯和成就）-->
+      <div class="home-section">
+        <div class="home-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🏆 我的成就墙</span>
+          <span style="font-size:12px;color:var(--text-muted);font-weight:normal;">已解锁 ${unlockedCount}/${allAchievements.length}</span>
+        </div>
+        <div class="glass-card" style="padding:16px;">
+          ${unlockedCount > 0 ? `
+            <div style="margin-bottom:12px;padding:10px 14px;background:linear-gradient(135deg,#fff5f7,#fff);border-radius:10px;border:1px solid var(--pink);">
+              <div style="font-size:13px;font-weight:600;color:var(--accent-dark);">✨ 我获得的成就：</div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;line-height:1.6;">
+                ${unlockedList.map(a => `${a.icon} ${a.name}`).join(' · ')}
+              </div>
+            </div>
+          ` : `
+            <div style="margin-bottom:12px;padding:10px 14px;background:var(--bg-secondary);border-radius:10px;font-size:12px;color:var(--text-muted);text-align:center;">
+              🌟 还未解锁成就，快去打卡学习解锁专属徽章吧！
+            </div>
+          `}
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+            ${achievementPreviewHtml}
+          </div>
+          <button class="btn-secondary" id="homeViewAllAch" style="width:100%;margin-top:12px;padding:8px;font-size:13px;">🏆 查看完整成就墙</button>
         </div>
       </div>
 
@@ -496,7 +598,7 @@ const UI = {
           </div>
           <div class="stats-card" data-nav="achievements">
             <div class="stats-icon">🏆</div>
-            <div class="stats-value">${Object.keys(State.getAchievements()).length}</div>
+            <div class="stats-value">${unlockedCount}</div>
             <div class="stats-label">已解锁成就</div>
           </div>
         </div>
@@ -516,20 +618,6 @@ const UI = {
           <div class="card card-accent card-accent-blue clickable" data-nav="english">
             <div class="card-title">🔤 英语单词默写</div>
             <div class="card-desc">核心词汇、句型练习，英语进步看得见。</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="home-section">
-        <div class="home-section-title">🌟 继续激励</div>
-        <div class="card-grid">
-          <div class="card card-accent card-accent-yellow clickable" data-nav="widget">
-            <div class="card-title">🎀 我的图片收藏</div>
-            <div class="card-desc">查看我的图片轮播收藏，学习间隙放松一下！</div>
-          </div>
-          <div class="card clickable" data-nav="achievements">
-            <div class="card-title">🏆 成就墙</div>
-            <div class="card-desc">解锁更多成就徽章，见证你的每一步成长。</div>
           </div>
         </div>
       </div>

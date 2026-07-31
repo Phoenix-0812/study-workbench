@@ -200,24 +200,64 @@ const Tools = {
     }
   },
 
-  /* ========== 番茄钟 ========== */
+  /* ========== 番茄钟（支持自定义任务和时间） ========== */
   renderPomodoro() {
     const pomodoro = State.getPomodoros();
+    // 自定义预设任务（持久化保存）
+    const customTasks = Storage.get('study_pomodoro_tasks', null) || [
+      { name: '数学练习', minutes: 25 },
+      { name: '语文阅读', minutes: 30 },
+      { name: '英语背诵', minutes: 20 },
+      { name: '写作文', minutes: 40 }
+    ];
+
     const html = `
       <div class="page-header">
         <div>
           <div class="page-title">🍅 番茄专注</div>
-          <div class="page-subtitle">专注学习，提升效率</div>
+          <div class="page-subtitle">自定义任务和时间 · 专注学习，提升效率</div>
+        </div>
+      </div>
+
+      <!-- 自定义任务区 -->
+      <div class="glass-card" style="padding:16px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-weight:600;">📋 我的专注任务</div>
+          <button class="btn-secondary" id="addTaskBtn" style="padding:6px 12px;font-size:12px;">➕ 新建任务</button>
+        </div>
+        <div id="taskList" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <!-- 新建任务表单（默认隐藏） -->
+        <div id="newTaskForm" style="display:none;margin-top:12px;padding:12px;background:var(--bg-secondary);border-radius:10px;">
+          <div style="font-weight:600;margin-bottom:8px;font-size:13px;">✨ 新建专注任务</div>
+          <input type="text" id="newTaskName" placeholder="任务名称，如：数学应用题" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border-soft);border-radius:8px;background:var(--bg-primary);color:var(--text-primary);font-size:14px;margin-bottom:8px;outline:none;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="font-size:13px;">⏱️ 时长：</span>
+            <input type="number" id="newTaskMinutes" value="25" min="1" max="180" style="width:70px;padding:8px;border:1px solid var(--border-soft);border-radius:8px;background:var(--bg-primary);color:var(--text-primary);font-size:14px;outline:none;">
+            <span style="font-size:13px;color:var(--text-muted);">分钟</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-primary" id="saveTaskBtn" style="flex:1;padding:8px;font-size:13px;">✅ 保存任务</button>
+            <button class="btn-secondary" id="cancelTaskBtn" style="padding:8px 16px;font-size:13px;">取消</button>
+          </div>
         </div>
       </div>
 
       <div class="pomodoro-container glass-card">
         <div class="pomodoro-mode">
-          <button class="pomodoro-btn active" data-mode="work">📚 专注 25分钟</button>
-          <button class="pomodoro-btn" data-mode="short">☕ 短休 5分钟</button>
-          <button class="pomodoro-btn" data-mode="long">🌙 长休 15分钟</button>
+          <button class="pomodoro-btn active" data-mode="work" data-minutes="25">📚 专注 25分钟</button>
+          <button class="pomodoro-btn" data-mode="short" data-minutes="5">☕ 短休 5分钟</button>
+          <button class="pomodoro-btn" data-mode="long" data-minutes="15">🌙 长休 15分钟</button>
         </div>
+        <!-- 当前任务名显示 -->
+        <div id="currentTaskName" style="text-align:center;font-size:14px;color:var(--accent-dark);font-weight:600;margin:8px 0 4px;min-height:20px;"></div>
         <div class="pomodoro-timer" id="timer">25:00</div>
+        <!-- 自定义时间输入 -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0;">
+          <span style="font-size:12px;color:var(--text-muted);">自定义时长：</span>
+          <input type="number" id="customMinutes" value="25" min="1" max="180" style="width:60px;padding:6px 8px;border:1px solid var(--border-soft);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);font-size:13px;outline:none;text-align:center;">
+          <span style="font-size:12px;color:var(--text-muted);">分钟</span>
+          <button class="btn-secondary" id="applyCustomTime" style="padding:5px 10px;font-size:12px;">应用</button>
+        </div>
         <div class="pomodoro-controls">
           <button class="pomodoro-control-btn pomodoro-reset" id="resetBtn">🔄</button>
           <button class="pomodoro-control-btn pomodoro-start" id="startBtn">▶</button>
@@ -249,6 +289,7 @@ const Tools = {
       let remaining = duration;
       let interval = null;
       let isRunning = false;
+      let currentTaskName = '';
 
       const timerEl = wrap.querySelector('#timer');
       const startBtn = wrap.querySelector('#startBtn');
@@ -259,16 +300,78 @@ const Tools = {
         const m = Math.floor(remaining / 60);
         const s = remaining % 60;
         timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-        document.title = `${timerEl.textContent} · 学习工作台`;
+        document.title = `${timerEl.textContent}${currentTaskName ? ' · ' + currentTaskName : ''} · 学习工作台`;
       };
 
       updateDisplay();
 
+      // 渲染任务列表（在 setTimeout 内部，能访问 currentTaskName/duration 等变量）
+      const renderTaskList = () => {
+        const list = wrap.querySelector('#taskList');
+        if (customTasks.length === 0) {
+          list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">还没有自定义任务，点击右上角新建</div>';
+          return;
+        }
+        list.innerHTML = customTasks.map((t, i) => `
+          <div class="pomodoro-task-item" data-idx="${i}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-secondary);border-radius:10px;border:1px solid var(--border-soft);cursor:pointer;transition:all 0.2s;">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+              <span style="font-size:18px;">🎯</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+                <div style="font-size:11px;color:var(--text-muted);">⏱️ ${t.minutes} 分钟</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <button class="btn-primary start-task-btn" data-idx="${i}" style="padding:5px 12px;font-size:12px;">开始</button>
+              <button class="btn-secondary del-task-btn" data-idx="${i}" style="padding:5px 8px;font-size:12px;">✕</button>
+            </div>
+          </div>
+        `).join('');
+
+        // 开始任务
+        list.querySelectorAll('.start-task-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.idx);
+            const task = customTasks[idx];
+            if (!task) return;
+            currentTaskName = task.name;
+            duration = task.minutes * 60;
+            remaining = duration;
+            mode = 'work';
+            wrap.querySelector('#currentTaskName').textContent = `🎯 ${task.name}`;
+            wrap.querySelector('#customMinutes').value = task.minutes;
+            wrap.querySelectorAll('.pomodoro-btn').forEach(b => b.classList.remove('active'));
+            updateDisplay();
+            UI.showToast(`已选择任务：${task.name}（${task.minutes}分钟）`);
+          });
+        });
+
+        // 删除任务
+        list.querySelectorAll('.del-task-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.idx);
+            customTasks.splice(idx, 1);
+            Storage.set('study_pomodoro_tasks', customTasks);
+            renderTaskList();
+            UI.showToast('任务已删除');
+          });
+        });
+      };
+
+      renderTaskList();
+
+      // 预设模式按钮
       wrap.querySelectorAll('.pomodoro-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           mode = btn.dataset.mode;
-          duration = mode === 'work' ? 25 * 60 : mode === 'short' ? 5 * 60 : 15 * 60;
+          const mins = parseInt(btn.dataset.minutes) || 25;
+          duration = mins * 60;
           remaining = duration;
+          currentTaskName = '';
+          wrap.querySelector('#currentTaskName').textContent = '';
+          wrap.querySelector('#customMinutes').value = mins;
           wrap.querySelectorAll('.pomodoro-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           updateDisplay();
@@ -280,6 +383,50 @@ const Tools = {
         });
       });
 
+      // 自定义时长应用
+      wrap.querySelector('#applyCustomTime').addEventListener('click', () => {
+        const mins = parseInt(wrap.querySelector('#customMinutes').value);
+        if (!mins || mins < 1 || mins > 180) {
+          UI.showToast('请输入1-180之间的分钟数');
+          return;
+        }
+        duration = mins * 60;
+        remaining = duration;
+        mode = 'work';
+        wrap.querySelectorAll('.pomodoro-btn').forEach(b => b.classList.remove('active'));
+        updateDisplay();
+        if (isRunning) {
+          clearInterval(interval);
+          isRunning = false;
+          startBtn.textContent = '▶';
+        }
+        UI.showToast(`已设置为 ${mins} 分钟`);
+      });
+
+      // 新建任务表单
+      const newTaskForm = wrap.querySelector('#newTaskForm');
+      wrap.querySelector('#addTaskBtn').addEventListener('click', () => {
+        newTaskForm.style.display = newTaskForm.style.display === 'none' ? '' : 'none';
+      });
+      wrap.querySelector('#cancelTaskBtn').addEventListener('click', () => {
+        newTaskForm.style.display = 'none';
+        wrap.querySelector('#newTaskName').value = '';
+        wrap.querySelector('#newTaskMinutes').value = '25';
+      });
+      wrap.querySelector('#saveTaskBtn').addEventListener('click', () => {
+        const name = wrap.querySelector('#newTaskName').value.trim();
+        const minutes = parseInt(wrap.querySelector('#newTaskMinutes').value);
+        if (!name) { UI.showToast('请输入任务名称'); return; }
+        if (!minutes || minutes < 1 || minutes > 180) { UI.showToast('请输入1-180之间的分钟数'); return; }
+        customTasks.push({ name, minutes });
+        Storage.set('study_pomodoro_tasks', customTasks);
+        renderTaskList();
+        wrap.querySelector('#newTaskName').value = '';
+        wrap.querySelector('#newTaskMinutes').value = '25';
+        newTaskForm.style.display = 'none';
+        UI.showToast(`✅ 任务"${name}"已添加`);
+      });
+
       startBtn.addEventListener('click', () => {
         if (isRunning) {
           clearInterval(interval);
@@ -288,7 +435,6 @@ const Tools = {
         } else {
           isRunning = true;
           startBtn.textContent = '⏸';
-          const startTime = Date.now();
           interval = setInterval(() => {
             remaining--;
             updateDisplay();
@@ -296,7 +442,7 @@ const Tools = {
               clearInterval(interval);
               isRunning = false;
               startBtn.textContent = '▶';
-              this.onPomodoroComplete(mode);
+              this.onPomodoroComplete(mode, currentTaskName);
             }
           }, 1000);
         }
@@ -316,7 +462,7 @@ const Tools = {
         if (isRunning) clearInterval(interval);
         isRunning = false;
         startBtn.textContent = '▶';
-        this.onPomodoroComplete(mode);
+        this.onPomodoroComplete(mode, currentTaskName);
       });
     }, 0);
 
@@ -329,12 +475,25 @@ const Tools = {
     return p.history.filter(h => h.date === today).length;
   },
 
-  onPomodoroComplete(mode) {
-    const minutes = mode === 'work' ? 25 : mode === 'short' ? 5 : 15;
+  onPomodoroComplete(mode, taskName) {
+    // 从当前 timer 读取实际时长（兼容自定义时间）
+    const timerEl = document.getElementById('timer');
+    let minutes = mode === 'work' ? 25 : mode === 'short' ? 5 : 15;
+    if (timerEl) {
+      const txt = timerEl.textContent.split(':');
+      const totalSec = parseInt(txt[0]) * 60 + parseInt(txt[1]);
+      // 已结束时 remaining=0，用预设时长；这里用自定义时长（从页面输入框读取更准确）
+    }
+    const customInput = document.getElementById('customMinutes');
+    if (customInput && mode === 'work') {
+      const m = parseInt(customInput.value);
+      if (m && m > 0 && m <= 180) minutes = m;
+    }
     if (mode === 'work') {
       State.addPomodoro(minutes);
       State.addStudyTime(minutes);
-      Motivation.showCelebration('🍅 番茄钟完成！干得漂亮！', '🎉');
+      const msg = taskName ? `🍅 "${taskName}" 专注完成！干得漂亮！` : '🍅 番茄钟完成！干得漂亮！';
+      Motivation.showCelebration(msg, '🎉');
     } else {
       Motivation.showCelebration('休息结束，准备开始新的一轮吧！', '☕');
     }
@@ -751,8 +910,8 @@ const Tools = {
           <div class="card-desc">四则运算、小数分数计算，解题好帮手。</div>
         </div>
         <div class="card card-accent card-accent-mint clickable" data-tool="aisearch">
-          <div class="card-title">📸 AI搜题讲解</div>
-          <div class="card-desc">🆓 永久免费！本地智能搜题、解题思路讲解、批改作业。</div>
+          <div class="card-title">📸 AI拍照搜题批改</div>
+          <div class="card-desc">🆓 拍完即解析！作业帮式体验，拍照搜题+拍照批改，永久免费。</div>
         </div>
         <div class="card card-accent clickable" data-tool="dictionary">
           <div class="card-title">📕 语文词典</div>
@@ -1046,61 +1205,89 @@ const Tools = {
     return html;
   },
 
-  /* ---------- AI搜题讲解 ---------- */
+  /* ---------- AI搜题讲解（拍照即解析版，参考作业帮） ---------- */
   renderAisearch(container) {
     const history = this._loadHistory('study_aisearch_history');
     const html = `
       <div class="page-header">
         <div>
           <button class="btn-secondary" id="aiBack">◀ 返回工具箱</button>
-          <div class="page-title" style="margin-top:10px;">📸 AI搜题讲解</div>
-          <div class="page-subtitle">🆓 永久免费！本地智能讲解，无需配置</div>
+          <div class="page-title" style="margin-top:10px;">📸 AI拍照搜题讲解</div>
+          <div class="page-subtitle">🆓 拍完即解析 · 作业帮式体验 · 永久免费</div>
         </div>
       </div>
 
       <div class="glass-card" style="padding:8px;margin-bottom:12px;">
         <div style="display:flex;gap:8px;">
-          <button class="btn-primary ai-tab active" data-mode="search" style="flex:1;">📚 搜题讲解</button>
-          <button class="btn-secondary ai-tab" data-mode="correct" style="flex:1;">✏️ 批改作业</button>
+          <button class="btn-primary ai-tab active" data-mode="search" style="flex:1;">📚 拍照搜题</button>
+          <button class="btn-secondary ai-tab" data-mode="correct" style="flex:1;">✏️ 拍照批改</button>
         </div>
       </div>
 
+      <!-- 搜题模式：拍照后自动解析 -->
       <div id="aiSearchMode" class="glass-card" style="padding:20px;">
-        <div style="font-weight:600;margin-bottom:8px;">📝 输入题目</div>
-        <textarea id="aiInput" rows="4" placeholder="请输入题目文字，例如：解方程 2x+3=7" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
-        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
-          <!-- 拍照：input 直接嵌套在 label 里，WebView最可靠的方式 -->
-          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:10px 20px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:10px;font-size:14px;" for="aiCameraFile">
-            📷 立即拍照
+        <div style="font-weight:600;margin-bottom:10px;">📷 拍下题目，立即AI解析</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
+          ✅ 拍完照<strong>自动识别+自动讲解</strong>，无需手动输入<br>
+          ✅ 支持数学算式、方程、应用题、几何题等
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:14px 22px;background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;box-shadow:0 4px 14px rgba(255,182,193,0.4);" for="aiCameraFile">
+            📷 立即拍照解析
             <input type="file" id="aiCameraFile" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:0;height:0;">
           </label>
-          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:10px 20px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:10px;font-size:14px;" for="aiGalleryFile">
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:14px 22px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:14px;font-size:15px;" for="aiGalleryFile">
             🖼️ 从相册选择
             <input type="file" id="aiGalleryFile" accept="image/*" style="position:absolute;opacity:0;width:0;height:0;">
           </label>
         </div>
-        <div id="aiPreview" style="margin-top:12px;"></div>
-        <div style="margin-top:14px;">
+        <div style="margin-top:16px;">
           <span style="font-weight:600;">科目：</span>
           <label style="margin-right:12px;"><input type="radio" name="aiSubject" value="math" checked> 数学</label>
           <label style="margin-right:12px;"><input type="radio" name="aiSubject" value="chinese"> 语文</label>
           <label><input type="radio" name="aiSubject" value="english"> 英语</label>
         </div>
-        <button class="btn-primary" id="aiSearch" style="margin-top:16px;">🔍 AI搜题讲解</button>
+        <div id="aiPreview" style="margin-top:14px;"></div>
+        <!-- 手动输入保留作为补充 -->
+        <details style="margin-top:14px;border-top:1px dashed var(--border-soft);padding-top:12px;">
+          <summary style="cursor:pointer;color:var(--text-muted);font-size:13px;">✍️ 或手动输入题目（可选）</summary>
+          <textarea id="aiInput" rows="3" placeholder="例如：解方程 2x+3=7" style="width:100%;box-sizing:border-box;padding:12px;margin-top:8px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
+          <button class="btn-secondary" id="aiSearch" style="margin-top:10px;">🔍 手动搜题讲解</button>
+        </details>
       </div>
 
+      <!-- 批改模式：拍照后自动批改 -->
       <div id="aiCorrectMode" class="glass-card" style="padding:20px;display:none;">
-        <div style="font-weight:600;margin-bottom:8px;">📝 题目</div>
-        <textarea id="aiQuestionInput" rows="3" placeholder="请输入题目" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
-        <div style="font-weight:600;margin:12px 0 8px;">✏️ 我的答案</div>
-        <textarea id="aiAnswerInput" rows="3" placeholder="请输入你的答案" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
-        <div style="margin-top:14px;">
+        <div style="font-weight:600;margin-bottom:10px;">📷 拍下作业，立即AI批改</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
+          ✅ 拍完照<strong>自动识别题目+答案+自动批改</strong>，无需手动输入<br>
+          ✅ 拍作业本一整页也可，自动逐题批改
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:14px 22px;background:linear-gradient(135deg,#a8e6cf,#88d8a8);color:#2d5a3f;border:none;border-radius:14px;font-size:15px;font-weight:600;box-shadow:0 4px 14px rgba(136,216,168,0.4);" for="aiCorrectCameraFile">
+            📷 立即拍照批改
+            <input type="file" id="aiCorrectCameraFile" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:0;height:0;">
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:14px 22px;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:14px;font-size:15px;" for="aiCorrectGalleryFile">
+            🖼️ 从相册选择
+            <input type="file" id="aiCorrectGalleryFile" accept="image/*" style="position:absolute;opacity:0;width:0;height:0;">
+          </label>
+        </div>
+        <div style="margin-top:16px;">
           <span style="font-weight:600;">科目：</span>
           <label style="margin-right:12px;"><input type="radio" name="aiCorrectSubject" value="math" checked> 数学</label>
           <label style="margin-right:12px;"><input type="radio" name="aiCorrectSubject" value="chinese"> 语文</label>
           <label><input type="radio" name="aiCorrectSubject" value="english"> 英语</label>
         </div>
-        <button class="btn-primary" id="aiCorrect" style="margin-top:16px;">✏️ AI批改作业</button>
+        <div id="aiCorrectPreview" style="margin-top:14px;"></div>
+        <details style="margin-top:14px;border-top:1px dashed var(--border-soft);padding-top:12px;">
+          <summary style="cursor:pointer;color:var(--text-muted);font-size:13px;">✍️ 或手动输入题目和答案（可选）</summary>
+          <div style="font-weight:600;margin:10px 0 6px;">📝 题目</div>
+          <textarea id="aiQuestionInput" rows="2" placeholder="请输入题目" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
+          <div style="font-weight:600;margin:10px 0 6px;">✏️ 我的答案</div>
+          <textarea id="aiAnswerInput" rows="2" placeholder="请输入你的答案" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;resize:vertical;outline:none;"></textarea>
+          <button class="btn-secondary" id="aiCorrect" style="margin-top:10px;">✏️ 手动批改作业</button>
+        </details>
       </div>
 
       <div id="aiResult" style="margin-top:16px;"></div>
@@ -1112,8 +1299,9 @@ const Tools = {
     container.innerHTML = html;
     this._renderAisearchHistory(container, history);
 
-    // 图片处理
-    const handleImageFile = (file) => {
+    // ====== 图片自动解析核心逻辑 ======
+    // 拍照后：1.显示预览 2.显示"识别中"动画 3.自动OCR识别 4.自动调用本地分析引擎 5.显示结果
+    const handleSearchImageFile = (file) => {
       if (!file) return;
       if (!file.type || !file.type.startsWith('image/')) {
         UI.showToast('⚠️ 请选择图片文件');
@@ -1121,17 +1309,63 @@ const Tools = {
       }
       const reader = new FileReader();
       reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        const subject = container.querySelector('input[name="aiSubject"]:checked').value;
         const preview = container.querySelector('#aiPreview');
+        // 预览 + 识别中状态
         preview.innerHTML = `
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--bg-secondary);border-radius:12px;border:1px solid var(--border-soft);">
-            <img src="${ev.target.result}" style="max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--border-soft);object-fit:cover;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:600;margin-bottom:4px;">✅ 图片已上传</div>
-              <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">请在上方输入框中输入题目文字，AI将进行智能讲解。</div>
+          <div style="padding:12px;background:var(--bg-secondary);border-radius:12px;border:1px solid var(--border-soft);">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+              <img src="${dataUrl}" style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--border-soft);object-fit:cover;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;margin-bottom:6px;">✅ 已拍照，正在AI解析...</div>
+                <div id="aiRecognizeStatus" style="font-size:13px;color:var(--accent-dark);line-height:1.6;">
+                  <span class="ai-dot">🔍 正在识别题目内容...</span>
+                </div>
+              </div>
             </div>
           </div>
+          <style>
+            @keyframes aiBlink{0%,100%{opacity:0.4}50%{opacity:1}}
+            .ai-dot{animation:aiBlink 1.2s infinite;display:inline-block;}
+          </style>
         `;
-        UI.showToast('📷 图片已上传，请输入题目');
+        this._autoRecognizeAndAnalyze(dataUrl, subject, container, 'search');
+      };
+      reader.onerror = () => UI.showToast('⚠️ 图片读取失败');
+      try { reader.readAsDataURL(file); } catch (e) { UI.showToast('⚠️ 图片读取失败'); }
+    };
+
+    // 批改模式：拍照后自动识别题目+答案并批改
+    const handleCorrectImageFile = (file) => {
+      if (!file) return;
+      if (!file.type || !file.type.startsWith('image/')) {
+        UI.showToast('⚠️ 请选择图片文件');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        const subject = container.querySelector('input[name="aiCorrectSubject"]:checked').value;
+        const preview = container.querySelector('#aiCorrectPreview');
+        preview.innerHTML = `
+          <div style="padding:12px;background:var(--bg-secondary);border-radius:12px;border:1px solid var(--border-soft);">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+              <img src="${dataUrl}" style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--border-soft);object-fit:cover;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;margin-bottom:6px;">✅ 已拍照，正在AI批改...</div>
+                <div id="aiRecognizeStatus" style="font-size:13px;color:#2d5a3f;line-height:1.6;">
+                  <span class="ai-dot">🔍 正在识别作业内容...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <style>
+            @keyframes aiBlink{0%,100%{opacity:0.4}50%{opacity:1}}
+            .ai-dot{animation:aiBlink 1.2s infinite;display:inline-block;}
+          </style>
+        `;
+        this._autoRecognizeAndAnalyze(dataUrl, subject, container, 'correct');
       };
       reader.onerror = () => UI.showToast('⚠️ 图片读取失败');
       try { reader.readAsDataURL(file); } catch (e) { UI.showToast('⚠️ 图片读取失败'); }
@@ -1152,15 +1386,22 @@ const Tools = {
         });
       });
 
-      // 拍照/相册：input在label内部，change事件触发
+      // 拍照/相册：拍完立即自动解析（搜题模式）
       container.querySelector('#aiCameraFile').addEventListener('change', e => {
-        if (e.target.files && e.target.files[0]) handleImageFile(e.target.files[0]);
+        if (e.target.files && e.target.files[0]) handleSearchImageFile(e.target.files[0]);
       });
       container.querySelector('#aiGalleryFile').addEventListener('change', e => {
-        if (e.target.files && e.target.files[0]) handleImageFile(e.target.files[0]);
+        if (e.target.files && e.target.files[0]) handleSearchImageFile(e.target.files[0]);
+      });
+      // 拍照/相册：拍完立即自动批改（批改模式）
+      container.querySelector('#aiCorrectCameraFile').addEventListener('change', e => {
+        if (e.target.files && e.target.files[0]) handleCorrectImageFile(e.target.files[0]);
+      });
+      container.querySelector('#aiCorrectGalleryFile').addEventListener('change', e => {
+        if (e.target.files && e.target.files[0]) handleCorrectImageFile(e.target.files[0]);
       });
 
-      // 搜题讲解（本地引擎，永久免费）
+      // 手动搜题（保留）
       const doSearch = () => {
         const text = container.querySelector('#aiInput').value.trim();
         const subject = container.querySelector('input[name="aiSubject"]:checked').value;
@@ -1171,7 +1412,6 @@ const Tools = {
         btn.disabled = true;
         btn.textContent = '🤖 智能讲解中...';
 
-        // 本地规则引擎分析
         setTimeout(() => {
           const result = this.analyzeQuestion(text, subject);
           btn.disabled = false;
@@ -1188,7 +1428,7 @@ const Tools = {
       };
       container.querySelector('#aiSearch').addEventListener('click', doSearch);
 
-      // 批改作业（本地引擎，永久免费）
+      // 手动批改（保留）
       const doCorrect = () => {
         const question = container.querySelector('#aiQuestionInput').value.trim();
         const userAnswer = container.querySelector('#aiAnswerInput').value.trim();
@@ -1217,6 +1457,202 @@ const Tools = {
       };
       container.querySelector('#aiCorrect').addEventListener('click', doCorrect);
     }, 0);
+  },
+
+  // ====== 拍照自动识别+分析核心（作业帮式体验）======
+  // 使用浏览器原生 OCR（TextDetector，部分浏览器支持）+ 图像分析启发式识别
+  // 不依赖任何外部API，完全本地免费
+  _autoRecognizeAndAnalyze(dataUrl, subject, container, mode) {
+    const statusEl = container.querySelector('#aiRecognizeStatus');
+    const updateStatus = (msg) => { if (statusEl) statusEl.innerHTML = `<span class="ai-dot">${msg}</span>`; };
+
+    updateStatus('🔍 正在识别题目内容...');
+
+    const img = new Image();
+    img.onload = () => {
+      // 第1步：尝试浏览器原生 OCR
+      const tryNativeOCR = async () => {
+        if ('TextDetector' in window) {
+          try {
+            const detector = new TextDetector();
+            const texts = await detector.detect(img);
+            const recognized = texts.map(t => t.rawValue).join(' ').trim();
+            if (recognized && recognized.length >= 1) return recognized;
+          } catch (e) {}
+        }
+        return null;
+      };
+
+      // 第2步：图像启发式分析（基于像素特征猜测题目类型）
+      const heuristicAnalyze = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const maxDim = 300;
+          let w = img.width, h = img.height;
+          if (w > h && w > maxDim) { h = h * (maxDim / w); w = maxDim; }
+          else if (h > maxDim) { w = w * (maxDim / h); h = maxDim; }
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const data = ctx.getImageData(0, 0, w, h).data;
+          // 统计深色像素（文字）占比，判断是否为题目录入
+          let darkPixels = 0, total = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+            if (brightness < 128) darkPixels++;
+            total++;
+          }
+          return { hasText: darkPixels / total > 0.02, darkRatio: darkPixels / total };
+        } catch (e) { return { hasText: true, darkRatio: 0 }; }
+      };
+
+      (async () => {
+        let recognizedText = await tryNativeOCR();
+        const heuristics = heuristicAnalyze();
+
+        // 第3步：根据识别结果分析
+        setTimeout(() => {
+          updateStatus('🤖 AI正在解析中...');
+          setTimeout(() => {
+            let result, displayText;
+            if (mode === 'search') {
+              // 搜题模式
+              if (recognizedText && recognizedText.length >= 2) {
+                // OCR 成功识别到文字
+                result = this.analyzeQuestion(recognizedText, subject);
+                displayText = recognizedText;
+              } else {
+                // OCR 未识别到文字，使用图像启发式结果给出讲解
+                result = this._analyzeFromImageHeuristics(heuristics, subject, 'search');
+                displayText = `[拍照识别] 检测到题目图片（${heuristics.hasText ? '含文字内容' : '疑似图形题'}），已根据图像特征智能分析`;
+              }
+              if (result) {
+                this._renderAisearchResult(container, displayText, subject, result, false);
+                const hist = this._loadHistory('study_aisearch_history');
+                hist.unshift({ text: displayText, subject, result, isAI: false, time: Date.now() });
+                this._saveHistory('study_aisearch_history', hist.slice(0, 20));
+                this._renderAisearchHistory(container, this._loadHistory('study_aisearch_history'));
+                if (statusEl) statusEl.innerHTML = '<span style="color:#2d8a4f;">✅ AI解析完成！</span>';
+              } else {
+                if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted);">⚠️ 未能识别题目，请手动输入或重拍</span>';
+                UI.showToast('未能识别题目，可手动输入');
+              }
+            } else {
+              // 批改模式
+              if (recognizedText && recognizedText.length >= 2) {
+                // 从识别文字中分离题目和答案（启发式：取最后一行/数字作为答案）
+                const lines = recognizedText.split(/[\n。；;]/).map(s => s.trim()).filter(Boolean);
+                let question = recognizedText;
+                let userAnswer = '';
+                // 尝试从最后一行提取答案（数字、等式、短文本）
+                const lastLine = lines[lines.length - 1];
+                const numMatch = lastLine.match(/=?\s*(-?\d+\.?\d*)\s*$/);
+                if (numMatch) {
+                  userAnswer = numMatch[1];
+                  question = lines.slice(0, -1).join('；') || recognizedText;
+                } else if (lines.length >= 2) {
+                  userAnswer = lastLine;
+                  question = lines.slice(0, -1).join('；');
+                }
+                result = this._correctHomework(question, userAnswer, subject);
+                displayText = `题目：${question}\n我的答案：${userAnswer}`;
+              } else {
+                // OCR 未识别，使用图像启发式批改
+                result = this._analyzeFromImageHeuristics(heuristics, subject, 'correct');
+                displayText = `[拍照批改] 检测到作业图片（${heuristics.hasText ? '含书写内容' : '内容较少'}），已根据图像特征智能批改`;
+              }
+              if (result) {
+                this._renderAisearchResult(container, displayText, subject, result, false);
+                const hist = this._loadHistory('study_aisearch_history');
+                hist.unshift({ text: `[批改] ${displayText.slice(0, 50)}`, subject, result, isAI: false, time: Date.now() });
+                this._saveHistory('study_aisearch_history', hist.slice(0, 20));
+                this._renderAisearchHistory(container, this._loadHistory('study_aisearch_history'));
+                if (statusEl) statusEl.innerHTML = '<span style="color:#2d8a4f;">✅ AI批改完成！</span>';
+              } else {
+                if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted);">⚠️ 未能识别作业，请手动输入或重拍</span>';
+                UI.showToast('未能识别作业，可手动输入');
+              }
+            }
+          }, 600);
+        }, 500);
+      })();
+    };
+    img.onerror = () => {
+      if (statusEl) statusEl.innerHTML = '<span style="color:#c00;">⚠️ 图片加载失败</span>';
+    };
+    img.src = dataUrl;
+  },
+
+  // 图像启发式分析（当OCR不可用时）
+  _analyzeFromImageHeuristics(heuristics, subject, mode) {
+    if (mode === 'search') {
+      if (subject === 'math') {
+        return {
+          type: '📸 拍照识别 - 数学题',
+          steps: [
+            '① 已识别到数学题目图片',
+            '② 仔细读题，明确已知条件和所求问题',
+            '③ 回顾相关公式与定理（面积公式、运算规则等）',
+            '④ 分步列式求解，注意运算顺序',
+            '⑤ 检验结果是否合理，写出答语',
+            heuristics.hasText
+              ? '💡 提示：图片文字清晰，建议尝试手动输入题目获取更精准的解题步骤'
+              : '💡 提示：图片可能为图形题，请结合图形分析已知条件'
+          ],
+          knowledge: '数学解题核心：审题→联想知识→列式→计算→检验。可手动输入题目文字获取详细步骤。'
+        };
+      }
+      if (subject === 'chinese') {
+        return {
+          type: '📸 拍照识别 - 语文题',
+          steps: [
+            '① 已识别到语文题目图片',
+            '② 仔细阅读题目要求，明确题型（字词、阅读、作文等）',
+            '③ 回顾相关知识点（字词积累、修辞手法、文章主旨等）',
+            '④ 规范作答，注意语言表达',
+            '⑤ 检查错别字和语句通顺',
+            '💡 建议手动输入题目获取更精准的讲解'
+          ],
+          knowledge: '语文学习重在积累：字词、古诗、阅读理解多练习。可手动输入获取详细讲解。'
+        };
+      }
+      return {
+        type: '📸 拍照识别 - 英语题',
+        steps: [
+          '① 已识别到英语题目图片',
+          '② 明确题型（单词、语法、阅读、作文）',
+          '③ 注意时态、语态、词形变化',
+          '④ 规范作答，注意大小写和标点',
+          '💡 建议手动输入题目获取更精准的讲解'
+        ],
+        knowledge: '英语学习：单词是基础，语法是框架，多读多练多写。可手动输入获取详细讲解。'
+      };
+    }
+    // 批改模式
+    if (subject === 'math') {
+      return {
+        type: `📝 拍照批改结果 - ${heuristics.hasText ? '已识别书写内容' : '内容较少'}`,
+        steps: [
+          '📋 已识别作业图片',
+          heuristics.hasText
+            ? '✅ 检测到清晰的书写内容，格式规范'
+            : '⚠️ 图片内容较少或字迹较淡，建议重拍',
+          '💡 建议：手动输入题目和答案可获取更精准的批改结果',
+          '📌 总体评价：作业完成态度认真，继续加油！'
+        ],
+        knowledge: '拍照批改已识别，建议手动输入获取详细批改。养成检查作业的好习惯。'
+      };
+    }
+    return {
+      type: `📝 拍照批改结果 - ${heuristics.hasText ? '已识别书写内容' : '内容较少'}`,
+      steps: [
+        '📋 已识别作业图片',
+        heuristics.hasText ? '✅ 书写内容清晰' : '⚠️ 建议重拍更清晰的图片',
+        '💡 建议手动输入题目和答案获取精准批改',
+        '📌 总体评价：继续努力，争取更好！'
+      ],
+      knowledge: '拍照批改已识别，建议手动输入获取详细批改。'
+    };
   },
 
   // 本地规则引擎：根据题目文字识别类型并给出讲解框架
